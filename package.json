@@ -1,0 +1,66 @@
+{
+  "name": "local-chat",
+  "version": "0.1.1",
+  "description": "Private local network CLI chat - no server, no logs, just vibes",
+  "type": "module",
+  "main": "dist/index.js",
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "bin": {
+    "local-chat": "dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "start": "node dist/index.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "biome check src tests",
+    "lint:fix": "biome check --write src tests",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "chat",
+    "cli",
+    "local",
+    "terminal",
+    "lan",
+    "websocket",
+    "private"
+  ],
+  "author": "DongGunYoon",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/DongGunYoon/local-chat.git"
+  },
+  "bugs": {
+    "url": "https://github.com/DongGunYoon/local-chat/issues"
+  },
+  "homepage": "https://github.com/DongGunYoon/local-chat#readme",
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "ink": "^5.1.0",
+    "ink-text-input": "^6.0.0",
+    "meow": "^13.2.0",
+    "react": "^18.3.1",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.3.14",
+    "@types/node": "^22.10.0",
+    "@types/react": "^18.3.12",
+    "@types/ws": "^8.5.13",
+    "typescript": "^5.7.0",
+    "vitest": "^4.0.18"
+  }
+}
