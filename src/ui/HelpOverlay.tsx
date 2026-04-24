@@ -32,7 +32,7 @@ const HELP_SECTIONS = [
       { key: "Tab", desc: "Boss mode (instant!)" },
       { key: "Shift+\u2191\u2193", desc: "Scroll messages" },
       { key: "PgUp/PgDn", desc: "Page scroll" },
-      { key: "Esc \u00D72", desc: "Leave room" },
+      { key: "Esc \u00D72", desc: "Browse rooms" },
       { key: "Ctrl+C", desc: "Exit app" },
     ],
   },

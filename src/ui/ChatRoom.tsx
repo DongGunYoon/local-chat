@@ -149,6 +149,7 @@ export function ChatRoom({
         `Welcome! ${currentUsers.length} users online: ${currentUsers.join(", ")}`,
       );
     }
+    addMessage("system", "Esc\u00D72 to create or join private rooms");
 
     lobbyPeer.on("message", handleMessage);
     lobbyPeer.on("userJoined", handleUserJoined);
@@ -506,7 +507,7 @@ export function ChatRoom({
 
       {escPending && !showFake && (
         <Box justifyContent="center">
-          <Text color={COLORS.system}>Press Esc again to leave</Text>
+          <Text color={COLORS.system}>Press Esc again to browse rooms</Text>
         </Box>
       )}
 

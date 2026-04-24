@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.2
+
+- Show `HH:MM` timestamp on every message (muted color, same line as nick)
+- Adjust wrap indent to 10 cols so wrapped lines align past the timestamp
+- Relabel `Esc×2` action from "leave room" to "browse rooms" across header, help overlay, and in-room hint
+- Add lobby welcome hint pointing users to `Esc×2` for private rooms
+- Expand README with a Screenshots section (placeholders for `assets/`)
+
 ## 0.1.1
 
 - Switch message layout to inline `nick › content` format with fixed 4-col indent wrapping

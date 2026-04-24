@@ -4,6 +4,11 @@ Private local network CLI chat. No server, no logs, just vibes.
 
 Same WiFi, terminal-based, fully encrypted, completely volatile.
 
+<!-- Screenshots: place images in assets/ and uncomment the lines below -->
+<!-- <p align="center">
+  <img src="assets/lobby.png" width="700" alt="Lobby chat" />
+</p> -->
+
 ## Quick Start
 
 ```bash
@@ -62,8 +67,24 @@ Nickname → Lobby (global chat) → Browse Rooms → Create / Join → Private 
 | `Tab` | Boss mode (instant!) |
 | `Shift+↑↓` | Scroll messages |
 | `PgUp / PgDn` | Page scroll |
-| `Esc ×2` | Back to lobby |
+| `Esc ×2` | Browse rooms |
 | `Ctrl+C` | Exit |
+
+## Screenshots
+
+> Add your own screenshots to `assets/` and uncomment the image tags.
+
+### Lobby Chat
+<!-- <img src="assets/lobby.png" width="700" alt="Lobby — global LAN chatroom" /> -->
+`npx local-chat` → enter nickname → lobby. Capture the header, chat messages, and input bar.
+
+### Room Browser
+<!-- <img src="assets/rooms.png" width="700" alt="Room browser — create or join" /> -->
+Press `Esc×2` in lobby → room list with available rooms and Create Room option.
+
+### Boss Mode
+<!-- <img src="assets/boss-mode.png" width="700" alt="Boss mode — fake system monitor" /> -->
+Press `Tab` anywhere → instant fake system monitor overlay. Press any key to return.
 
 ## How It Works
 

@@ -13,7 +13,7 @@ function formatTime(timestamp: number): string {
 
 const MAX_NICK_WIDTH = 16;
 const MAX_CONTENT_LINES = 5;
-const WRAP_INDENT = 4;
+const WRAP_INDENT = 10; // "HH:MM " (6) + 4
 
 /** \r 등 제어문자 제거 (터미널 렌더링 교란 방지) */
 function sanitize(text: string): string {
@@ -112,10 +112,9 @@ export function MessageItem({
   const nameColor = isMe ? COLORS.primary : COLORS.nickname;
   const displayNick = truncateToWidth(entry.nickname ?? "", MAX_NICK_WIDTH);
 
-  // Build prefix string to calculate its display width
   const hostBadge = isHost ? `${SYMBOLS.host} ` : "";
   const meSuffix = isMe ? "\u2605" : "";
-  const prefixStr = `${hostBadge}${displayNick}${meSuffix} ${SYMBOLS.messageSep} `;
+  const prefixStr = `${time} ${hostBadge}${displayNick}${meSuffix} ${SYMBOLS.messageSep} `;
   const prefixWidth = getDisplayWidth(prefixStr);
   const firstWidth = Math.max(1, cols - prefixWidth);
   const contWidth = Math.max(1, cols - WRAP_INDENT);
@@ -128,6 +127,7 @@ export function MessageItem({
   return (
     <Box flexDirection="column">
       <Text wrap="truncate-end">
+        <Text color={COLORS.muted}>{`${time} `}</Text>
         {isHost && <Text>{SYMBOLS.host} </Text>}
         <Text bold color={nameColor}>
           {displayNick}
@@ -214,15 +214,11 @@ export function estimateMessageRows(
 
   const hostBadge = isHost ? `${SYMBOLS.host} ` : "";
   const meSuffix = isMe ? "\u2605" : "";
-  const prefixStr = `${hostBadge}${displayNick}${meSuffix} ${SYMBOLS.messageSep} `;
+  const prefixStr = `${formatTime(entry.timestamp)} ${hostBadge}${displayNick}${meSuffix} ${SYMBOLS.messageSep} `;
   const prefixWidth = getDisplayWidth(prefixStr);
   const firstWidth = Math.max(1, cols - prefixWidth);
   const contWidth = Math.max(1, cols - WRAP_INDENT);
 
   const rawLines = countTwoWidthLines(content, firstWidth, contWidth);
-
-  if (rawLines > MAX_CONTENT_LINES) {
-    return MAX_CONTENT_LINES;
-  }
-  return rawLines;
+  return rawLines > MAX_CONTENT_LINES ? MAX_CONTENT_LINES : rawLines;
 }

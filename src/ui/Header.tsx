@@ -42,7 +42,7 @@ export function Header({
   hintText,
   columns,
 }: HeaderProps): React.JSX.Element {
-  const hint = hintText ?? `Tab on EMERGENCY ${SYMBOLS.dot} /help ${SYMBOLS.dot} Esc\u00D72 leave`;
+  const hint = hintText ?? `Tab on EMERGENCY ${SYMBOLS.dot} /help ${SYMBOLS.dot} Rooms(Esc\u00D72)`;
 
   // border(2) + paddingX(2) = 4
   const availableWidth = columns - 4;

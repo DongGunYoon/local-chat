@@ -1,6 +1,6 @@
 {
   "name": "local-chat",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Private local network CLI chat - no server, no logs, just vibes",
   "type": "module",
   "main": "dist/index.js",
