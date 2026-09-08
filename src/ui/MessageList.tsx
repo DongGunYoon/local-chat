@@ -79,6 +79,15 @@ export function layoutMessage(
   }));
 }
 
+/**
+ * Drop the spaces a row ends with, so its rendered width never exceeds the width it was
+ * laid out for. Only spaces are removed: they are the only graphemes `wrapTextTwoWidth`
+ * lets past the row width, and a whitespace-only row becomes an empty line.
+ */
+function trimTrailingSpaces(text: string): string {
+  return text.replace(/ +$/u, "");
+}
+
 type MessageRowViewProps = {
   row: MessageRow;
   hostNickname: string;
@@ -90,8 +99,15 @@ export function MessageRowView({
   hostNickname,
   showHostBadge,
 }: MessageRowViewProps): React.JSX.Element {
-  const { entry, kind, text } = row;
+  const { entry, kind } = row;
   const time = formatTime(entry.timestamp);
+
+  // A row that fills its width exactly keeps the following space (the hanging indent
+  // would jog right without it), so its rendered width can be maxWidth + 1. Rendering
+  // that space would make ink truncate the line, and cli-truncate spends a cell of the
+  // budget on "…" — the glyph before the space would be replaced, not just clipped.
+  // Trailing spaces are invisible, so dropping them here loses nothing.
+  const text = trimTrailingSpaces(row.text);
 
   if (entry.type === "system") {
     if (kind === "cont") {
