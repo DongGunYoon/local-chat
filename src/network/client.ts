@@ -131,14 +131,16 @@ export class ChatClient extends EventEmitter {
     }, RECONNECT_INTERVAL);
   }
 
-  sendMessage(payload: string): void {
-    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
+  /** Returns false when the socket is not open, so the caller can keep the draft. */
+  sendMessage(payload: string): boolean {
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return false;
 
     const msg: ChatMessage = {
       type: "message",
       payload,
     };
     this.ws.send(JSON.stringify(msg));
+    return true;
   }
 
   getEncryptionKey(): Buffer | null {

@@ -356,7 +356,10 @@ export function ChatRoom({
         );
         return false;
       }
-      lobbyPeer.sendChatMessage(text);
+      if (!lobbyPeer.sendChatMessage(text)) {
+        addMessage("system", "Not delivered \u2014 the lobby is offline");
+        return false;
+      }
       addMessage("message", text, safeNickname(lobbyPeer.getNickname()), true);
       return true;
     }
@@ -371,7 +374,10 @@ export function ChatRoom({
       return true;
     }
     if (mode === "client" && client) {
-      client.sendMessage(encrypted);
+      if (!client.sendMessage(encrypted)) {
+        addMessage("system", "Not delivered \u2014 reconnecting\u2026");
+        return false;
+      }
       return true;
     }
     return false;

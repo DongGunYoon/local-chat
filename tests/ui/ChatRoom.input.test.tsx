@@ -1,6 +1,7 @@
 import { EventEmitter } from "node:events";
 import { cleanup, render } from "ink-testing-library";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import type { ChatClient } from "../../src/network/client.js";
 import type { LobbyPeer } from "../../src/network/lobby.js";
 import { ChatRoom } from "../../src/ui/ChatRoom.js";
 
@@ -22,8 +23,29 @@ function wait(ms: number): Promise<void> {
   });
 }
 
-async function renderRoom() {
-  const sendChatMessage = vi.fn();
+type RenderedApp = ReturnType<typeof render>;
+
+/** Keyboard driver and frame readers shared by every harness below. */
+async function driveApp(app: RenderedApp) {
+  const type = async (chunk: string, ms = AFTER_CHUNK_MS): Promise<void> => {
+    app.stdin.write(chunk);
+    await wait(ms);
+  };
+  await wait(MOUNT_MS);
+
+  const frame = (): string => (app.lastFrame() ?? "").replace(SGR, "");
+  /** Lines of the bordered input box, without borders or padding. */
+  const draftRows = (): string[] =>
+    frame()
+      .split("\n")
+      .filter((line) => /^\u2502 (\u276F | {2})/.test(line))
+      .map((line) => line.slice(2, -2).trimEnd());
+
+  return { type, frame, draftRows };
+}
+
+async function renderRoom(options: { sendResult?: boolean } = {}) {
+  const sendChatMessage = vi.fn(() => options.sendResult ?? true);
   const peer = Object.assign(new EventEmitter(), {
     getNickname: () => "me",
     getUsers: () => ["me"],
@@ -44,21 +66,34 @@ async function renderRoom() {
     />,
   );
 
-  const type = async (chunk: string, ms = AFTER_CHUNK_MS): Promise<void> => {
-    app.stdin.write(chunk);
-    await wait(ms);
-  };
-  await wait(MOUNT_MS);
+  return { ...app, sendChatMessage, onExit, onRequestRooms, ...(await driveApp(app)) };
+}
 
-  const frame = (): string => (app.lastFrame() ?? "").replace(SGR, "");
-  /** Lines of the bordered input box, without borders or padding. */
-  const draftRows = (): string[] =>
-    frame()
-      .split("\n")
-      .filter((line) => /^\u2502 (\u276F | {2})/.test(line))
-      .map((line) => line.slice(2, -2).trimEnd());
+/** A private room joined as a client, where the socket can be closed mid-session. */
+async function renderPrivateClientRoom(options: { sendResult?: boolean } = {}) {
+  const sendMessage = vi.fn(() => options.sendResult ?? true);
+  const client = Object.assign(new EventEmitter(), {
+    getEncryptionKey: () => Buffer.alloc(32, 7),
+    getNickname: () => "me",
+    sendMessage,
+    disconnect: vi.fn(),
+  });
+  const onExit = vi.fn();
+  const onRequestRooms = vi.fn();
 
-  return { ...app, sendChatMessage, onExit, onRequestRooms, type, frame, draftRows };
+  const app = render(
+    <ChatRoom
+      roomType="private"
+      roomName="Room"
+      nickname="me"
+      mode="client"
+      client={client as unknown as ChatClient}
+      onExit={onExit}
+      onRequestRooms={onRequestRooms}
+    />,
+  );
+
+  return { ...app, sendMessage, onExit, onRequestRooms, ...(await driveApp(app)) };
 }
 
 afterEach(() => {
@@ -224,12 +259,61 @@ describe("ChatRoom input", () => {
     app.unmount();
   });
 
+  it("keeps the draft when the lobby socket is down", async () => {
+    const app = await renderRoom({ sendResult: false });
+
+    await app.type("h", WITHIN_PASTE_MS);
+    await app.type("i", WITHIN_PASTE_MS);
+    await app.type("\r");
+
+    expect(app.sendChatMessage).toHaveBeenCalledTimes(1);
+    expect(app.frame()).toContain("Not delivered");
+    expect(app.draftRows()).toEqual(["\u276F hi"]);
+    // Nothing left the machine, so there is no local echo either: "hi" exists
+    // only inside the input box.
+    const outsideDraft = app
+      .frame()
+      .split("\n")
+      .filter((line) => !/^\u2502 (\u276F | {2})/.test(line))
+      .join("\n");
+    expect(outsideDraft).not.toContain("hi");
+    app.unmount();
+  });
+
   it("exits on Ctrl+C", async () => {
     const app = await renderRoom();
 
     await app.type("\u0003", WITHIN_PASTE_MS);
 
     expect(app.onExit).toHaveBeenCalledTimes(1);
+    app.unmount();
+  });
+});
+
+describe("ChatRoom private client delivery", () => {
+  it("sends and clears the draft while the socket is open", async () => {
+    const app = await renderPrivateClientRoom();
+
+    await app.type("h", WITHIN_PASTE_MS);
+    await app.type("i", WITHIN_PASTE_MS);
+    await app.type("\r");
+
+    expect(app.sendMessage).toHaveBeenCalledTimes(1);
+    expect(app.frame()).not.toContain("Not delivered");
+    expect(app.frame()).toContain("Type a message");
+    app.unmount();
+  });
+
+  it("keeps the draft and warns when the socket is not open", async () => {
+    const app = await renderPrivateClientRoom({ sendResult: false });
+
+    await app.type("h", WITHIN_PASTE_MS);
+    await app.type("i", WITHIN_PASTE_MS);
+    await app.type("\r");
+
+    expect(app.sendMessage).toHaveBeenCalledTimes(1);
+    expect(app.frame()).toContain("Not delivered");
+    expect(app.draftRows()).toEqual(["\u276F hi"]);
     app.unmount();
   });
 });

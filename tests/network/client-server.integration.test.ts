@@ -80,7 +80,7 @@ describe("public room", () => {
     const ciphertext = encrypt(plaintext, aliceKey);
 
     const bobReceive = waitForEvent(bob, "message");
-    alice.sendMessage(ciphertext);
+    expect(alice.sendMessage(ciphertext)).toBe(true);
     const [nickname, payload] = bobReceive.then ? await bobReceive : await bobReceive;
 
     // bob decrypts

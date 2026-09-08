@@ -150,6 +150,20 @@ describe("LobbyPeer", () => {
     expect(messageSpy).not.toHaveBeenCalled();
   });
 
+  it("reports whether a chat message actually left the machine", async () => {
+    const peer = createPeer("alice");
+
+    // No socket yet, so nothing can be sent and the caller must keep the draft.
+    expect(peer.sendChatMessage("before start")).toBe(false);
+
+    await peer.startListening();
+    peer.activate();
+    expect(peer.sendChatMessage("while active")).toBe(true);
+
+    peer.stop();
+    expect(peer.sendChatMessage("after stop")).toBe(false);
+  });
+
   it("should deduplicate messages", async () => {
     const peer1 = createPeer("alice");
     const peer2 = createPeer("bob");

@@ -69,8 +69,9 @@ export class LobbyPeer extends EventEmitter {
     this.presenceTimer = setInterval(() => this.sendPresence(), LOBBY_PRESENCE_INTERVAL);
   }
 
-  sendChatMessage(content: string): void {
-    if (!this.socket || !this.active) return;
+  /** Returns false when the peer is not running, so the caller can keep the draft. */
+  sendChatMessage(content: string): boolean {
+    if (!this.socket || !this.active) return false;
 
     this.messageCounter++;
     const msg: LobbyChatMessage = {
@@ -86,6 +87,7 @@ export class LobbyPeer extends EventEmitter {
 
     const buffer = Buffer.from(JSON.stringify(msg));
     this.socket.send(buffer, 0, buffer.length, LOBBY_PORT, "255.255.255.255");
+    return true;
   }
 
   getNickname(): string {
