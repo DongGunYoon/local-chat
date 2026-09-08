@@ -20,8 +20,9 @@ const LONE_ESCAPE = /\x1b/g;
 
 // C0 controls except \n and \t, DEL, C1 controls, bidi controls, BOM and zero-width space.
 // ZWJ (U+200D), ZWNJ (U+200C) and VS16 (U+FE0F) are deliberately NOT in this set.
-// biome-ignore lint/suspicious/noControlCharactersInRegex: removes non-printable control bytes
-const UNSAFE_CONTROLS = /[\x00-\x08\x0b\x0c\x0e-\x1f\x7f\x80-\x9f‪-‮⁦-⁩﻿​]/g;
+const UNSAFE_CONTROLS =
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: removes non-printable control bytes
+  /[\x00-\x08\x0b\x0c\x0e-\x1f\x7f\x80-\x9f\u202a-\u202e\u2066-\u2069\ufeff\u200b]/g;
 
 /** Normalise text that came from the keyboard, the clipboard or the network. Never removes printable characters. */
 export function normalizeInput(text: string): string {

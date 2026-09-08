@@ -127,8 +127,8 @@ export class RoomDiscovery extends EventEmitter {
           const announce = parseRoomAnnounce(JSON.parse(data.toString()));
           if (!announce) return;
 
-          // 광고에 적힌 host는 발신자가 고른 인터페이스(VPN/가상 어댑터일 수 있다)라
-          // 신뢰하지 않고 실제 발신 주소를 쓴다
+          // The announced host is whichever interface the sender picked (often a VPN or
+          // virtual adapter), so trust the real source address instead
           const host = rinfo.address || announce.host;
           const key = `${host}:${announce.port}`;
           const room: RoomInfo = {

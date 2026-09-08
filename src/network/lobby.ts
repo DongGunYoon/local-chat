@@ -167,7 +167,7 @@ export class LobbyPeer extends EventEmitter {
 
   private handleMessage(data: Buffer): void {
     try {
-      // UDP 로비는 인증이 없다 — 모든 필드를 타입 검사한 뒤에만 처리한다
+      // The UDP lobby is unauthenticated: type-check every field before dispatching
       const raw: unknown = JSON.parse(data.toString());
       const msg = this.parseLobbyMessage(raw);
       if (!msg) return;

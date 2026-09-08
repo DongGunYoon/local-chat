@@ -62,11 +62,11 @@ describe("normalizeInput — escape sequences and controls", () => {
   });
 
   it("removes bidi override controls", () => {
-    expect(normalizeInput("a‮b‬c⁦d⁩e")).toBe("abcde");
+    expect(normalizeInput("a\u202eb\u202cc\u2066d\u2069e")).toBe("abcde");
   });
 
   it("removes BOM and zero-width space", () => {
-    expect(normalizeInput("a﻿b​c")).toBe("abc");
+    expect(normalizeInput("a\ufeffb\u200bc")).toBe("abc");
   });
 
   it("expands each tab to four spaces", () => {
@@ -80,8 +80,8 @@ describe("normalizeInput — printable characters are never removed", () => {
     ["ZWJ family emoji", "👨‍👩‍👧"],
     ["skin tone emoji", "👍🏽"],
     ["heart with VS16", "❤️"],
-    ["ZWNJ", "a‌b"],
-    ["combining acute accent", "é"],
+    ["ZWNJ", "a\u200cb"],
+    ["combining acute accent", "e\u0301"],
     ["Arabic", "مرحبا بالعالم"],
     ["Hebrew", "שלום עולם"],
     ["Korean", "안녕하세요"],

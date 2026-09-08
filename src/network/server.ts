@@ -85,7 +85,7 @@ export class ChatServer extends EventEmitter {
 
     ws.on("message", (data) => {
       try {
-        // 원격에서 오는 JSON은 신뢰할 수 없다 — 모든 필드를 타입 검사한다
+        // JSON from the network is untrusted: type-check every field before using it
         const msg: unknown = JSON.parse(data.toString());
         if (typeof msg !== "object" || msg === null) return;
         const record = msg as Record<string, unknown>;
