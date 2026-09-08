@@ -1,9 +1,10 @@
 import { EventEmitter } from "node:events";
 import { WebSocket, WebSocketServer } from "ws";
+import { sanitizeNickname } from "../utils/sanitize.js";
 import { deriveKey, generateSessionKey, sha256 } from "./crypto.js";
+import { WS_MAX_PAYLOAD_BYTES } from "./limits.js";
 import type {
   BroadcastChatMessage,
-  ClientMessage,
   RoomClosedMessage,
   ServerMessage,
   UserListMessage,
@@ -50,7 +51,7 @@ export class ChatServer extends EventEmitter {
 
   start(): Promise<number> {
     return new Promise((resolve, reject) => {
-      this.wss = new WebSocketServer({ port: 0 }, () => {
+      this.wss = new WebSocketServer({ port: 0, maxPayload: WS_MAX_PAYLOAD_BYTES }, () => {
         const addr = this.wss!.address();
         if (typeof addr === "object" && addr !== null) {
           this.port = addr.port;
@@ -66,7 +67,10 @@ export class ChatServer extends EventEmitter {
       });
 
       this.wss.on("error", (err) => {
-        this.emit("error", err);
+        // EventEmitter throws on an "error" event without a listener — never let that kill the process
+        if (this.listenerCount("error") > 0) {
+          this.emit("error", err);
+        }
         reject(err);
       });
     });
@@ -81,21 +85,31 @@ export class ChatServer extends EventEmitter {
 
     ws.on("message", (data) => {
       try {
-        const msg: ClientMessage = JSON.parse(data.toString());
+        // 원격에서 오는 JSON은 신뢰할 수 없다 — 모든 필드를 타입 검사한다
+        const msg: unknown = JSON.parse(data.toString());
+        if (typeof msg !== "object" || msg === null) return;
+        const record = msg as Record<string, unknown>;
         const client = this.clients.get(ws);
 
         if (!client) {
           // 미인증 상태 — auth 메시지만 처리
-          if (msg.type === "auth") {
+          if (record.type === "auth") {
             clearTimeout(authTimeout);
-            this.handleAuth(ws, msg.passwordHash, msg.nickname);
+            const nickname = sanitizeNickname(record.nickname);
+            if (nickname === null) {
+              this.send(ws, { type: "auth_fail", reason: "Invalid nickname" });
+              ws.close();
+              return;
+            }
+            const passwordHash = typeof record.passwordHash === "string" ? record.passwordHash : "";
+            this.handleAuth(ws, passwordHash, nickname);
           }
           return;
         }
 
         // 인증된 클라이언트의 메시지 처리
-        if (msg.type === "message") {
-          this.handleChatMessage(client, msg.payload);
+        if (record.type === "message" && typeof record.payload === "string") {
+          this.handleChatMessage(client, record.payload);
         }
       } catch {
         // 잘못된 메시지는 무시한다

@@ -1,6 +1,7 @@
 import dgram from "node:dgram";
 import { EventEmitter } from "node:events";
 import { getLocalIp } from "../utils/network.js";
+import { sanitizeNickname } from "../utils/sanitize.js";
 import {
   BROADCAST_INTERVAL,
   DISCOVERY_PORT,
@@ -32,7 +33,10 @@ export class RoomBroadcaster extends EventEmitter {
     this.socket = dgram.createSocket({ type: "udp4", reuseAddr: true });
 
     this.socket.on("error", (err) => {
-      this.emit("error", err);
+      // EventEmitter throws on an "error" event without a listener — never let that kill the process
+      if (this.listenerCount("error") > 0) {
+        this.emit("error", err);
+      }
     });
 
     this.socket.bind(() => {
@@ -72,6 +76,30 @@ export class RoomBroadcaster extends EventEmitter {
   }
 }
 
+/** Validate an untrusted room-announce datagram; returns null for anything malformed. */
+function parseRoomAnnounce(raw: unknown): RoomAnnounce | null {
+  if (typeof raw !== "object" || raw === null) return null;
+  const msg = raw as Record<string, unknown>;
+
+  if (msg.type !== "room-announce") return null;
+  if (typeof msg.hasPassword !== "boolean") return null;
+  if (typeof msg.userCount !== "number") return null;
+  if (typeof msg.port !== "number" || !Number.isInteger(msg.port)) return null;
+  if (msg.port < 1 || msg.port > 65535) return null;
+
+  const name = sanitizeNickname(msg.name);
+  if (name === null) return null;
+
+  return {
+    type: "room-announce",
+    name,
+    host: typeof msg.host === "string" ? msg.host : "",
+    port: msg.port,
+    hasPassword: msg.hasPassword,
+    userCount: msg.userCount,
+  };
+}
+
 /**
  * UDP로 네트워크 내 방을 탐색한다 (참여자 전용)
  */
@@ -85,24 +113,30 @@ export class RoomDiscovery extends EventEmitter {
       this.socket = dgram.createSocket({ type: "udp4", reuseAddr: true });
 
       this.socket.on("error", (err) => {
-        this.emit("error", err);
+        // EventEmitter throws on an "error" event without a listener — never let that kill the process
+        if (this.listenerCount("error") > 0) {
+          this.emit("error", err);
+        }
         this.socket?.close();
         this.socket = null;
         reject(err);
       });
 
-      this.socket.on("message", (data) => {
+      this.socket.on("message", (data, rinfo) => {
         try {
-          const msg: RoomAnnounce = JSON.parse(data.toString());
-          if (msg.type !== "room-announce") return;
+          const announce = parseRoomAnnounce(JSON.parse(data.toString()));
+          if (!announce) return;
 
-          const key = `${msg.host}:${msg.port}`;
+          // 광고에 적힌 host는 발신자가 고른 인터페이스(VPN/가상 어댑터일 수 있다)라
+          // 신뢰하지 않고 실제 발신 주소를 쓴다
+          const host = rinfo.address || announce.host;
+          const key = `${host}:${announce.port}`;
           const room: RoomInfo = {
-            name: msg.name,
-            host: msg.host,
-            port: msg.port,
-            hasPassword: msg.hasPassword,
-            userCount: msg.userCount,
+            name: announce.name,
+            host,
+            port: announce.port,
+            hasPassword: announce.hasPassword,
+            userCount: announce.userCount,
             lastSeen: Date.now(),
           };
 

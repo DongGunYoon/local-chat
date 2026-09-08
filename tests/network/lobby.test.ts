@@ -28,6 +28,19 @@ async function waitUntil(fn: () => boolean, timeout = 5000, interval = 100): Pro
   throw new Error("waitUntil timed out");
 }
 
+// Send one raw datagram to the lobby port, bypassing LobbyPeer's own encoding
+async function sendRawLobbyDatagram(payload: unknown): Promise<void> {
+  const socket = dgram.createSocket({ type: "udp4", reuseAddr: true });
+  const buffer = Buffer.from(JSON.stringify(payload));
+  await new Promise<void>((resolve) => {
+    socket.bind(() => {
+      socket.setBroadcast(true);
+      socket.send(buffer, 0, buffer.length, LOBBY_PORT, "255.255.255.255", () => resolve());
+    });
+  });
+  await new Promise<void>((resolve) => socket.close(() => resolve()));
+}
+
 describe("LobbyPeer", () => {
   const peers: LobbyPeer[] = [];
 
@@ -271,5 +284,108 @@ describe("LobbyPeer", () => {
     // Both should keep "alice" — no suffix
     expect(peer1.getNickname()).toBe("alice");
     expect(peer2.getNickname()).toBe("alice");
+  });
+
+  it("drops a chat packet whose content is not a string", async () => {
+    const peer = createPeer("alice");
+    await peer.startListening();
+    peer.activate();
+
+    const messageSpy = vi.fn();
+    peer.on("message", messageSpy);
+
+    await sendRawLobbyDatagram({
+      type: "lobby-message",
+      id: "x-1",
+      nickname: "n",
+      content: { o: 1 },
+      timestamp: 1,
+    });
+
+    await delay(300);
+    expect(messageSpy).not.toHaveBeenCalled();
+  });
+
+  it("drops a chat packet whose nickname is not a string", async () => {
+    const peer = createPeer("alice");
+    await peer.startListening();
+    peer.activate();
+
+    const messageSpy = vi.fn();
+    peer.on("message", messageSpy);
+
+    await sendRawLobbyDatagram({
+      type: "lobby-message",
+      id: "y-1",
+      nickname: { a: 1 },
+      content: "hi",
+      timestamp: 1,
+    });
+
+    await delay(300);
+    expect(messageSpy).not.toHaveBeenCalled();
+  });
+
+  it("drops a presence packet whose nickname is not a string", async () => {
+    const peer = createPeer("alice");
+    await peer.startListening();
+    peer.activate();
+
+    await sendRawLobbyDatagram({
+      type: "lobby-presence",
+      nickname: { a: 1 },
+      peerId: "ghost-peer",
+    });
+
+    await delay(300);
+    expect(peer.getUsers()).toEqual(["alice"]);
+  });
+
+  it("drops a presence packet whose peerId is not a string", async () => {
+    const peer = createPeer("alice");
+    await peer.startListening();
+    peer.activate();
+
+    await sendRawLobbyDatagram({ type: "lobby-presence", nickname: "ghost", peerId: 7 });
+
+    await delay(300);
+    expect(peer.getUsers()).toEqual(["alice"]);
+  });
+
+  it("sanitizes an incoming presence nickname", async () => {
+    const peer = createPeer("alice");
+    await peer.startListening();
+    peer.activate();
+
+    await sendRawLobbyDatagram({
+      type: "lobby-presence",
+      nickname: "bob\u001b[2J\n",
+      peerId: "sanitize-peer",
+    });
+
+    await waitUntil(() => peer.getUsers().includes("bob"), 3000);
+    expect(peer.getUsers()).toContain("bob");
+  });
+
+  it("uses Date.now() when the timestamp is not a number", async () => {
+    const peer = createPeer("alice");
+    await peer.startListening();
+    peer.activate();
+
+    const messagePromise = waitForEvent(peer, "message");
+    const before = Date.now();
+    await sendRawLobbyDatagram({
+      type: "lobby-message",
+      id: "z-1",
+      nickname: "bob",
+      content: "plain text",
+      timestamp: "not-a-number",
+    });
+
+    const [nickname, content, timestamp] = await messagePromise;
+    expect(nickname).toBe("bob");
+    expect(content).toBe("plain text");
+    expect(typeof timestamp).toBe("number");
+    expect(timestamp as number).toBeGreaterThanOrEqual(before);
   });
 });

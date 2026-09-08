@@ -310,3 +310,137 @@ describe("disconnection", () => {
     ws.close();
   });
 });
+
+describe("crash guards", () => {
+  it("closes a client that sends an oversized frame and keeps serving others", async () => {
+    const server = await createServer("room", "host");
+
+    const wsBig = await connectClient(server.getPort());
+    wsBig.on("error", () => {
+      // an abrupt teardown may surface as an error; the close assertion is what matters
+    });
+    const closed = new Promise<number>((resolve) => {
+      wsBig.on("close", (code) => resolve(code));
+    });
+
+    wsBig.send("x".repeat(2 * 1024 * 1024));
+    const code = await closed;
+    expect(code).toBe(1009);
+
+    // The server is still alive for a well-behaved client
+    const ws = await connectClient(server.getPort());
+    const promise = waitForMessage(ws);
+    sendJSON(ws, { type: "auth", passwordHash: "", nickname: "alice" });
+    const msg = await promise;
+    expect(msg.type).toBe("auth_ok");
+    ws.close();
+  });
+
+  it("rejects a non-string nickname with auth_fail", async () => {
+    const server = await createServer("room", "host");
+    const ws = await connectClient(server.getPort());
+
+    const promise = waitForMessage(ws);
+    ws.send(JSON.stringify({ type: "auth", passwordHash: "", nickname: { a: 1 } }));
+    const msg = await promise;
+
+    expect(msg.type).toBe("auth_fail");
+    if (msg.type === "auth_fail") {
+      expect(msg.reason).toBe("Invalid nickname");
+    }
+    ws.close();
+  });
+
+  it("rejects a nickname that sanitizes to nothing", async () => {
+    const server = await createServer("room", "host");
+    const ws = await connectClient(server.getPort());
+
+    const promise = waitForMessage(ws);
+    sendJSON(ws, { type: "auth", passwordHash: "", nickname: "\x1b[2J" });
+    const msg = await promise;
+
+    expect(msg.type).toBe("auth_fail");
+    if (msg.type === "auth_fail") {
+      expect(msg.reason).toBe("Invalid nickname");
+    }
+    ws.close();
+  });
+
+  it("sanitizes control sequences out of an accepted nickname", async () => {
+    const server = await createServer("room", "host");
+    const ws = await connectClient(server.getPort());
+
+    const promise = waitForMessage(ws);
+    sendJSON(ws, { type: "auth", passwordHash: "", nickname: "bob\x1b[2J\n" });
+    const msg = await promise;
+
+    expect(msg.type).toBe("auth_ok");
+    if (msg.type === "auth_ok") {
+      expect(msg.nickname).toBe("bob");
+    }
+    ws.close();
+  });
+
+  it("accepts international nicknames unchanged", async () => {
+    const server = await createServer("room", "host");
+
+    for (const nickname of ["홍길동", "山田太郎", "José", "😀"]) {
+      const ws = await connectClient(server.getPort());
+      const promise = waitForMessage(ws);
+      sendJSON(ws, { type: "auth", passwordHash: "", nickname });
+      const msg = await promise;
+
+      expect(msg.type).toBe("auth_ok");
+      if (msg.type === "auth_ok") {
+        expect(msg.nickname).toBe(nickname);
+      }
+      ws.close();
+    }
+  });
+
+  it("treats a non-string passwordHash as an empty password", async () => {
+    const server = await createServer("room", "host");
+    const ws = await connectClient(server.getPort());
+
+    const promise = waitForMessage(ws);
+    ws.send(JSON.stringify({ type: "auth", passwordHash: { a: 1 }, nickname: "alice" }));
+    const msg = await promise;
+
+    expect(msg.type).toBe("auth_ok");
+    ws.close();
+  });
+
+  it("ignores a message with a non-string payload", async () => {
+    const server = await createServer("room", "host");
+
+    const wsAlice = await connectClient(server.getPort());
+    const pAlice = waitForMessages(wsAlice, 3);
+    sendJSON(wsAlice, { type: "auth", passwordHash: "", nickname: "alice" });
+    await pAlice;
+
+    const wsBob = await connectClient(server.getPort());
+    const pAliceJoin = waitForMessages(wsAlice, 2);
+    const pBob = waitForMessages(wsBob, 3);
+    sendJSON(wsBob, { type: "auth", passwordHash: "", nickname: "bob" });
+    await Promise.all([pAliceJoin, pBob]);
+
+    const received: ServerMessage[] = [];
+    wsBob.on("message", (data) => {
+      received.push(JSON.parse(data.toString()));
+    });
+
+    sendJSON(wsAlice, { type: "message", payload: { a: 1 } });
+    await new Promise((resolve) => setTimeout(resolve, 300));
+
+    expect(received).toEqual([]);
+
+    // The connection is still usable
+    const bobReceive = waitForMessage(wsBob);
+    sendJSON(wsAlice, { type: "message", payload: "hello" });
+    const msg = await bobReceive;
+    expect(msg.type).toBe("message");
+
+    wsAlice.close();
+    wsBob.close();
+  });
+});

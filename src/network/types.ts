@@ -98,7 +98,11 @@ export const ROOM_TIMEOUT = 10000; // 방 탐색 시 10초 이상 응답 없으�
 export const LOBBY_PORT = 41569;
 export const LOBBY_PRESENCE_INTERVAL = 500;
 export const LOBBY_PRESENCE_TIMEOUT = 5000;
-export const LOBBY_MAX_MESSAGE_BYTES = 800; // UDP MTU 제한: 한글 ~260자, 영문 ~800자
+// UDP MTU 제한: 한글 ~260자, 영문 ~800자.
+// Measured datagram math (lobby-message JSON, 16-cell nickname, AES-GCM + base64 content):
+//   800 B plaintext  -> ~1255 B UDP payload  (fits)
+//  1000 B plaintext  -> ~1523 B UDP payload  (exceeds the 1472 B IPv4/UDP payload of a 1500-byte MTU)
+export const LOBBY_MAX_MESSAGE_BYTES = 800;
 
 export type LobbyPresenceMessage = {
   type: "lobby-presence";

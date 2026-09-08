@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import dgram from "node:dgram";
 import { EventEmitter } from "node:events";
+import { sanitizeNickname } from "../utils/sanitize.js";
 import { deobfuscate, obfuscate } from "./crypto.js";
 import {
   LOBBY_PORT,
@@ -39,7 +40,10 @@ export class LobbyPeer extends EventEmitter {
       this.socket = dgram.createSocket({ type: "udp4", reuseAddr: true });
 
       this.socket.on("error", (err) => {
-        this.emit("error", err);
+        // EventEmitter throws on an "error" event without a listener — never let that kill the process
+        if (this.listenerCount("error") > 0) {
+          this.emit("error", err);
+        }
         reject(err);
       });
 
@@ -163,7 +167,10 @@ export class LobbyPeer extends EventEmitter {
 
   private handleMessage(data: Buffer): void {
     try {
-      const msg: LobbyMessage = JSON.parse(data.toString());
+      // UDP 로비는 인증이 없다 — 모든 필드를 타입 검사한 뒤에만 처리한다
+      const raw: unknown = JSON.parse(data.toString());
+      const msg = this.parseLobbyMessage(raw);
+      if (!msg) return;
 
       if (msg.type === "lobby-presence") {
         this.handlePresence(msg);
@@ -176,6 +183,39 @@ export class LobbyPeer extends EventEmitter {
     } catch {
       // ignore malformed packets
     }
+  }
+
+  /** Validate an untrusted datagram; returns null for anything malformed. */
+  private parseLobbyMessage(raw: unknown): LobbyMessage | null {
+    if (typeof raw !== "object" || raw === null) return null;
+    const msg = raw as Record<string, unknown>;
+
+    if (msg.type === "lobby-presence") {
+      if (typeof msg.peerId !== "string") return null;
+      const nickname = sanitizeNickname(msg.nickname);
+      if (nickname === null) return null;
+      return { type: "lobby-presence", nickname, peerId: msg.peerId };
+    }
+
+    if (msg.type === "lobby-message") {
+      if (typeof msg.id !== "string" || typeof msg.content !== "string") return null;
+      const nickname = sanitizeNickname(msg.nickname);
+      if (nickname === null) return null;
+      return {
+        type: "lobby-message",
+        id: msg.id,
+        nickname,
+        content: msg.content,
+        timestamp: typeof msg.timestamp === "number" ? msg.timestamp : Date.now(),
+      };
+    }
+
+    if (msg.type === "lobby-leave") {
+      if (typeof msg.peerId !== "string") return null;
+      return { type: "lobby-leave", peerId: msg.peerId };
+    }
+
+    return null;
   }
 
   private handlePresence(msg: LobbyPresenceMessage): void {
