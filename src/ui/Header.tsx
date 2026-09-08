@@ -11,6 +11,7 @@ type HeaderProps = {
   showHostBadge?: boolean;
   roomNameColor?: string;
   hintText?: string;
+  hintColor?: string;
   isLobby?: boolean;
   columns: number;
 };
@@ -40,6 +41,7 @@ export function Header({
   showHostBadge = true,
   roomNameColor = COLORS.primary,
   hintText,
+  hintColor = COLORS.muted,
   columns,
 }: HeaderProps): React.JSX.Element {
   const hint = hintText ?? `Tab on EMERGENCY ${SYMBOLS.dot} /help ${SYMBOLS.dot} Rooms(Esc\u00D72)`;
@@ -135,7 +137,7 @@ export function Header({
         </Text>
         {renderUsers()}
       </Box>
-      <Text color={COLORS.muted}>{hint}</Text>
+      <Text color={hintColor}>{hint}</Text>
     </Box>
   );
 }

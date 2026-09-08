@@ -2,20 +2,30 @@ import { execSync } from "node:child_process";
 import { Box, Text, useInput } from "ink";
 import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useBracketedPaste } from "../hooks/useBracketedPaste.js";
+import { useMessageInput } from "../hooks/useMessageInput.js";
 import { useTerminalSize } from "../hooks/useTerminalSize.js";
+import { isEmpty } from "../input/textBuffer.js";
 import type { ChatClient } from "../network/client.js";
 import { decrypt, encrypt } from "../network/crypto.js";
 import type { RoomBroadcaster } from "../network/discovery.js";
+import { LOBBY_MAX_MESSAGE_BYTES, measureLobby } from "../network/limits.js";
 import type { LobbyPeer } from "../network/lobby.js";
 import type { ChatServer } from "../network/server.js";
-import { type ChatEntry, LOBBY_MAX_MESSAGE_BYTES } from "../network/types.js";
+import type { ChatEntry } from "../network/types.js";
+import {
+  isSlashCommand,
+  sanitizeIncoming,
+  sanitizeNickname,
+  unescapeLeadingSlash,
+} from "../utils/sanitize.js";
 import { VERSION } from "../version.js";
 import { FakeOverlay } from "./FakeOverlay.js";
 import { Header } from "./Header.js";
 import { HelpOverlay } from "./HelpOverlay.js";
 import { InputBar } from "./InputBar.js";
 import { MessageArea } from "./MessageArea.js";
-import { COLORS, KAOMOJI_MAP } from "./theme.js";
+import { COLORS, KAOMOJI_MAP, SYMBOLS } from "./theme.js";
 
 type ChatRoomProps = {
   roomType: "lobby" | "private";
@@ -42,6 +52,17 @@ const COMMAND_ALIASES: Record<string, string> = {
   "/\u314A": "/copy",
 };
 
+const ESC = "\u001B";
+const PLACEHOLDER = "Type a message\u2026 (Ctrl+J for a new line)";
+
+/** The header box: top border, one line, bottom border. */
+const HEADER_ROWS = 3;
+/** The input box's top and bottom border. */
+const INPUT_BORDER_ROWS = 2;
+/** Cells the input box spends around the text: border(2) + paddingX(2) + prompt(2). */
+const INPUT_SIDE_CELLS = 6;
+const MAX_INPUT_ROWS = 5;
+
 function copyToClipboard(text: string): boolean {
   const commands = ["pbcopy", "xclip -selection clipboard", "xsel --clipboard --input"];
   for (const cmd of commands) {
@@ -53,13 +74,19 @@ function copyToClipboard(text: string): boolean {
   return false;
 }
 
+/** Nicknames and user lists arrive from the network, so they are cleaned before display. */
+function safeNickname(value: unknown): string {
+  return sanitizeNickname(value) ?? "?";
+}
+
+function safeUserList(users: string[]): string[] {
+  return users.map(safeNickname);
+}
+
 let messageIdCounter = 0;
 function nextMessageId(): string {
   return `msg-${++messageIdCounter}-${Date.now()}`;
 }
-
-// Header(3행) + InputBar(3행) = 6행을 고정 UI가 차지한다
-const FIXED_UI_ROWS = 6;
 
 export function ChatRoom({
   roomType,
@@ -91,11 +118,6 @@ export function ChatRoom({
   // 방장 닉네임: 유저 목록의 첫 번째 (서버가 항상 방장을 첫 번째로 보낸다)
   const hostNickname = isPrivate ? users[0] || nickname : "";
 
-  const escWarningRows = escPending ? 1 : 0;
-  const messageAreaHeight = showFake
-    ? rows - 1
-    : Math.max(1, rows - 1 - FIXED_UI_ROWS - escWarningRows);
-
   const addMessage = useCallback(
     (type: ChatEntry["type"], content: string, msgNickname?: string, isMe?: boolean) => {
       setMessages((prev) => [
@@ -119,28 +141,28 @@ export function ChatRoom({
     if (!isLobby || !lobbyPeer) return;
 
     const handleMessage = (msgNickname: string, content: string, _timestamp: number): void => {
-      addMessage("message", content, msgNickname);
+      addMessage("message", sanitizeIncoming(content), safeNickname(msgNickname));
     };
 
     const mountTime = Date.now();
 
     const handleUserJoined = (joinedNickname: string): void => {
       if (Date.now() - mountTime < 2000) return;
-      addMessage("system", `${joinedNickname} joined`);
+      addMessage("system", `${safeNickname(joinedNickname)} joined`);
     };
 
     const handleUserLeft = (leftNickname: string): void => {
-      addMessage("system", `${leftNickname} left`);
+      addMessage("system", `${safeNickname(leftNickname)} left`);
     };
 
     const handleUserList = (userList: string[]): void => {
-      setUsers(userList);
+      setUsers(safeUserList(userList));
     };
 
     // Initialize user list
-    setUsers(lobbyPeer.getUsers());
+    const currentUsers = safeUserList(lobbyPeer.getUsers());
+    setUsers(currentUsers);
 
-    const currentUsers = lobbyPeer.getUsers();
     if (currentUsers.length <= 1) {
       addMessage("system", "Welcome to the lobby! Waiting for others...");
     } else {
@@ -185,22 +207,23 @@ export function ChatRoom({
     const encryptionKey = server.getEncryptionKey();
 
     const handleMessage = (msgNickname: string, payload: string, _timestamp: number): void => {
+      const who = safeNickname(msgNickname);
       try {
         const decrypted = decrypt(payload, encryptionKey);
-        addMessage("message", decrypted, msgNickname, msgNickname === nickname);
+        addMessage("message", sanitizeIncoming(decrypted), who, who === nickname);
       } catch {
-        addMessage("message", "[decryption failed]", msgNickname);
+        addMessage("message", "[decryption failed]", who);
       }
     };
 
     const handleUserJoined = (joined: string, allUsers: string[]): void => {
-      addMessage("system", `${joined} joined`);
-      setUsers(allUsers);
+      addMessage("system", `${safeNickname(joined)} joined`);
+      setUsers(safeUserList(allUsers));
     };
 
     const handleUserLeft = (left: string, allUsers: string[]): void => {
-      addMessage("system", `${left} left`);
-      setUsers(allUsers);
+      addMessage("system", `${safeNickname(left)} left`);
+      setUsers(safeUserList(allUsers));
     };
 
     addMessage("system", `Room "${roomName}" created`);
@@ -226,29 +249,31 @@ export function ChatRoom({
     const handleMessage = (msgNickname: string, payload: string, _timestamp: number): void => {
       const encryptionKey = client.getEncryptionKey();
       if (!encryptionKey) return;
+      const who = safeNickname(msgNickname);
       try {
         const decrypted = decrypt(payload, encryptionKey);
-        addMessage("message", decrypted, msgNickname, msgNickname === nickname);
+        addMessage("message", sanitizeIncoming(decrypted), who, who === nickname);
       } catch {
-        addMessage("message", "[decryption failed]", msgNickname);
+        addMessage("message", "[decryption failed]", who);
       }
     };
 
     const handleSystem = (content: string): void => {
-      addMessage("system", content);
+      addMessage("system", sanitizeIncoming(content));
     };
 
     const handleUserList = (userList: string[]): void => {
-      setUsers(userList);
+      const safeUsers = safeUserList(userList);
+      setUsers(safeUsers);
       if (!hasShownMemberList.current) {
         hasShownMemberList.current = true;
-        addMessage("system", `Online: ${userList.join(", ")}`);
+        addMessage("system", `Online: ${safeUsers.join(", ")}`);
       }
     };
 
     const handleRoomClosed = (reason: string): void => {
       roomClosedRef.current = true;
-      addMessage("system", `${reason} Returning to rooms...`);
+      addMessage("system", `${sanitizeIncoming(reason)} Returning to rooms...`);
       exitTimerRef.current = setTimeout(() => {
         client?.disconnect();
         onRequestRooms();
@@ -298,8 +323,159 @@ export function ChatRoom({
     };
   }, []);
 
-  // 키보드 입력
-  useInput((_input, key) => {
+  const getEncryptionKey = (): Buffer | null => {
+    if (mode === "host" && server) {
+      return server.getEncryptionKey();
+    }
+    if (mode === "client" && client) {
+      return client.getEncryptionKey();
+    }
+    return null;
+  };
+
+  const handleExit = (): void => {
+    if (isPrivate) {
+      if (mode === "host") {
+        broadcaster?.stop();
+        server?.close();
+      } else {
+        client?.disconnect();
+      }
+    }
+    onExit();
+  };
+
+  /** Returns true when the text left the app, which is what clears the draft. */
+  const sendMessage = (text: string): boolean => {
+    if (isLobby && lobbyPeer) {
+      const measure = measureLobby(text);
+      if (measure.level === "over") {
+        addMessage(
+          "system",
+          `Too long for the lobby (${measure.bytes}/${LOBBY_MAX_MESSAGE_BYTES} B) \u2014 open a private room (Esc\u00D72) for long messages`,
+        );
+        return false;
+      }
+      lobbyPeer.sendChatMessage(text);
+      addMessage("message", text, safeNickname(lobbyPeer.getNickname()), true);
+      return true;
+    }
+
+    const encryptionKey = getEncryptionKey();
+    if (!encryptionKey) return false;
+
+    const encrypted = encrypt(text, encryptionKey);
+
+    if (mode === "host" && server) {
+      server.broadcastMessage(encrypted);
+      return true;
+    }
+    if (mode === "client" && client) {
+      client.sendMessage(encrypted);
+      return true;
+    }
+    return false;
+  };
+
+  const handleCommand = (text: string): boolean => {
+    const parts = text.split(" ");
+    let command = parts[0].toLowerCase();
+
+    // alias 해소
+    command = COMMAND_ALIASES[command] ?? command;
+
+    // kaomoji 커맨드 확인
+    const kaomoji = KAOMOJI_MAP[command];
+    if (kaomoji) {
+      return sendMessage(kaomoji);
+    }
+
+    switch (command) {
+      case "/help":
+        setShowHelp(true);
+        return true;
+
+      case "/users":
+        addMessage("system", `Online (${users.length}): ${users.join(", ")}`);
+        return true;
+
+      case "/erase":
+        setMessages([]);
+        setScrollOffset(0);
+        return true;
+
+      case "/fake":
+        setShowFake(true);
+        return true;
+
+      case "/version":
+        addMessage("system", `local-chat v${VERSION}`);
+        return true;
+
+      case "/copy": {
+        const n = Math.max(1, Number.parseInt(parts[1], 10) || 1);
+        const chatMessages = messages.filter((m) => m.type === "message");
+        const target = chatMessages[chatMessages.length - n];
+        if (!target) {
+          addMessage("system", "No message to copy");
+        } else if (copyToClipboard(target.content)) {
+          addMessage("system", "Copied to clipboard");
+        } else {
+          addMessage("system", "Clipboard not available");
+        }
+        return true;
+      }
+
+      case "/quit":
+        handleExit();
+        return true;
+
+      default:
+        addMessage(
+          "system",
+          `Unknown command: ${command}. Type /help, or start with // to send it as text`,
+        );
+        return false;
+    }
+  };
+
+  const handleSubmit = (text: string): boolean =>
+    isSlashCommand(text) ? handleCommand(text) : sendMessage(unescapeLeadingSlash(text));
+
+  const overlayActive = showHelp || showFake;
+
+  const innerWidth = Math.max(1, columns - INPUT_SIDE_CELLS);
+  // Never let the draft eat more than a third of the screen.
+  const maxInputRows = Math.min(
+    Math.max(Math.floor((rows - 1 - HEADER_ROWS - INPUT_BORDER_ROWS - 2) / 3), 1),
+    MAX_INPUT_ROWS,
+  );
+
+  useBracketedPaste(true);
+  const input = useMessageInput({
+    width: innerWidth,
+    maxVisibleRows: maxInputRows,
+    focus: !overlayActive,
+    onSubmit: handleSubmit,
+    onNotice: (message) => addMessage("system", message),
+  });
+
+  const escWarningRows = escPending ? 1 : 0;
+  const inputRows = input.visibleCount;
+  const messageAreaHeight = showFake
+    ? rows - 1
+    : Math.max(1, rows - 1 - HEADER_ROWS - (inputRows + INPUT_BORDER_ROWS) - escWarningRows);
+
+  // 키보드 입력: 이 화면의 유일한 useInput
+  useInput((inputStr, key) => {
+    if (input.consumeChunkFlag()) return;
+
+    if (key.ctrl && inputStr === "c") {
+      // A stray \x03 inside a paste must not kill the app.
+      if (!input.isPasting()) handleExit();
+      return;
+    }
+
     if (showHelp) {
       setShowHelp(false);
       return;
@@ -316,8 +492,10 @@ export function ChatRoom({
     }
 
     if (key.escape) {
-      if (escPending) {
-        if (escTimerRef.current) clearTimeout(escTimerRef.current);
+      // Ink strips one ESC, so a single chunk holding both bytes arrives as "\x1B".
+      const isDouble = escPending || inputStr === ESC;
+      if (escTimerRef.current) clearTimeout(escTimerRef.current);
+      if (isDouble) {
         setEscPending(false);
         onRequestRooms();
       } else {
@@ -352,126 +530,24 @@ export function ChatRoom({
       setScrollOffset((prev) => Math.max(0, prev - messageAreaHeight));
       return;
     }
+
+    input.handleKey(inputStr, key);
   });
 
-  const getEncryptionKey = (): Buffer | null => {
-    if (mode === "host" && server) {
-      return server.getEncryptionKey();
+  const hintParts: string[] = [];
+  let hintColor: string | undefined;
+  if (isLobby) {
+    const measure = measureLobby(input.text);
+    if (measure.level !== "ok") {
+      const suffix = measure.level === "over" ? ` ${SYMBOLS.dot} too long for lobby` : "";
+      hintParts.push(`${measure.bytes}/${LOBBY_MAX_MESSAGE_BYTES} B${suffix}`);
+      hintColor = measure.level === "over" ? COLORS.error : "yellow";
     }
-    if (mode === "client" && client) {
-      return client.getEncryptionKey();
-    }
-    return null;
-  };
-
-  const handleInput = (text: string): void => {
-    if (text.startsWith("/")) {
-      handleCommand(text);
-      return;
-    }
-
-    sendMessage(text);
-  };
-
-  const sendMessage = (text: string): void => {
-    if (isLobby && lobbyPeer) {
-      const byteLength = Buffer.byteLength(text, "utf8");
-      if (byteLength > LOBBY_MAX_MESSAGE_BYTES) {
-        addMessage(
-          "system",
-          `Message too long for lobby (${byteLength}/${LOBBY_MAX_MESSAGE_BYTES} bytes). Try a shorter message.`,
-        );
-        return;
-      }
-      lobbyPeer.sendChatMessage(text);
-      addMessage("message", text, lobbyPeer.getNickname(), true);
-      return;
-    }
-
-    const encryptionKey = getEncryptionKey();
-    if (!encryptionKey) return;
-
-    const encrypted = encrypt(text, encryptionKey);
-
-    if (mode === "host" && server) {
-      server.broadcastMessage(encrypted);
-    } else if (mode === "client" && client) {
-      client.sendMessage(encrypted);
-    }
-  };
-
-  const handleCommand = (text: string): void => {
-    const parts = text.split(" ");
-    let command = parts[0].toLowerCase();
-
-    // alias 해소
-    command = COMMAND_ALIASES[command] ?? command;
-
-    // kaomoji 커맨드 확인
-    const kaomoji = KAOMOJI_MAP[command];
-    if (kaomoji) {
-      sendMessage(kaomoji);
-      return;
-    }
-
-    switch (command) {
-      case "/help":
-        setShowHelp(true);
-        break;
-
-      case "/users":
-        addMessage("system", `Online (${users.length}): ${users.join(", ")}`);
-        break;
-
-      case "/erase":
-        setMessages([]);
-        setScrollOffset(0);
-        break;
-
-      case "/fake":
-        setShowFake(true);
-        break;
-
-      case "/version":
-        addMessage("system", `local-chat v${VERSION}`);
-        break;
-
-      case "/copy": {
-        const n = Math.max(1, Number.parseInt(parts[1], 10) || 1);
-        const chatMessages = messages.filter((m) => m.type === "message");
-        const target = chatMessages[chatMessages.length - n];
-        if (!target) {
-          addMessage("system", "No message to copy");
-        } else if (copyToClipboard(target.content)) {
-          addMessage("system", "Copied to clipboard");
-        } else {
-          addMessage("system", "Clipboard not available");
-        }
-        break;
-      }
-
-      case "/quit":
-        handleExit();
-        break;
-
-      default:
-        addMessage("system", `Unknown command: ${command}. Type /help`);
-    }
-  };
-
-  const handleExit = (): void => {
-    if (isPrivate) {
-      if (mode === "host") {
-        broadcaster?.stop();
-        server?.close();
-      } else {
-        client?.disconnect();
-      }
-    }
-    onExit();
-  };
-
-  const overlayActive = showHelp || showFake;
+  }
+  if (input.rows.length > input.visibleCount) {
+    hintParts.push(`\u2195 ${input.caret.row + 1}/${input.rows.length}`);
+  }
+  const hintText = hintParts.length > 0 ? hintParts.join(` ${SYMBOLS.dot} `) : undefined;
 
   const showHostBadge = isPrivate;
 
@@ -482,9 +558,11 @@ export function ChatRoom({
           roomName={roomName}
           users={users}
           hostNickname={hostNickname}
-          myNickname={isLobby && lobbyPeer ? lobbyPeer.getNickname() : nickname}
+          myNickname={isLobby && lobbyPeer ? safeNickname(lobbyPeer.getNickname()) : nickname}
           showHostBadge={showHostBadge}
           roomNameColor={isLobby ? COLORS.system : COLORS.primary}
+          hintText={hintText}
+          hintColor={hintColor}
           isLobby={isLobby}
           columns={columns}
         />
@@ -511,7 +589,16 @@ export function ChatRoom({
         </Box>
       )}
 
-      {!showFake && <InputBar onSubmit={handleInput} focus={!overlayActive} />}
+      {!showFake && (
+        <InputBar
+          rows={input.visibleRows}
+          caret={overlayActive ? null : input.caretVisible}
+          width={innerWidth}
+          placeholder={PLACEHOLDER}
+          focus={!overlayActive}
+          isEmpty={isEmpty(input.state)}
+        />
+      )}
     </Box>
   );
 }

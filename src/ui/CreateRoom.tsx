@@ -25,7 +25,12 @@ export function CreateRoom({ nickname, onSubmit, onBack }: CreateRoomProps): Rea
   const [password, setPassword] = useState("");
   const { rows } = useTerminalSize();
 
-  useInput((_input, key) => {
+  useInput((input, key) => {
+    if (key.ctrl && input === "c") {
+      process.exit(0);
+      return;
+    }
+
     if (key.escape) {
       if (step === "roomName") {
         onBack();

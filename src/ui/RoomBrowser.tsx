@@ -120,6 +120,11 @@ export function RoomBrowser({
 
   // Keyboard — single handler, no isActive flag
   useInput((input, key) => {
+    if (key.ctrl && input === "c") {
+      onExit();
+      return;
+    }
+
     // Clear notification on any key press
     if (notification) setNotification(null);
 

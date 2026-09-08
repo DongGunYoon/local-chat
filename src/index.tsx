@@ -29,6 +29,8 @@ process.stdout.write("\x1B[H");
 
 // 종료 시 원래 터미널로 복원하는 함수
 function restoreScreen(): void {
+  // Bracketed paste mode is turned off first: it outlives the alternate screen.
+  process.stdout.write("\x1B[?2004l");
   process.stdout.write("\x1B[?1049l");
 }
 
@@ -44,8 +46,10 @@ process.on("SIGTERM", () => {
 });
 
 // Ink 앱 렌더링
+// Ctrl+C is handled by each screen: Ink's own handler would exit on a \x03 byte that
+// lands inside a paste.
 const { waitUntilExit } = render(<App />, {
-  exitOnCtrlC: true,
+  exitOnCtrlC: false,
 });
 
 waitUntilExit().then(() => {

@@ -36,7 +36,12 @@ export function NicknameScreen({ onSubmit }: NicknameScreenProps): React.JSX.Ele
     };
   }, []);
 
-  useInput((_input, key) => {
+  useInput((input, key) => {
+    if (key.ctrl && input === "c") {
+      process.exit(0);
+      return;
+    }
+
     if (key.escape) {
       process.exit(0);
     }
