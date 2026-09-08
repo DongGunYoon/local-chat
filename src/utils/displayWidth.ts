@@ -89,3 +89,49 @@ export function limitInputByWidth(str: string, maxWidth: number): string {
 
   return str;
 }
+
+// Grapheme-cluster helpers used by the input engine. Intl.Segmenter is created once
+// because constructing one per call is expensive on every keystroke.
+let segmenterCache: Intl.Segmenter | null | undefined;
+
+function getSegmenter(): Intl.Segmenter | null {
+  if (segmenterCache === undefined) {
+    segmenterCache =
+      typeof Intl !== "undefined" && typeof Intl.Segmenter === "function"
+        ? new Intl.Segmenter(undefined, { granularity: "grapheme" })
+        : null;
+  }
+  return segmenterCache;
+}
+
+/**
+ * Split a string into grapheme clusters (emoji ZWJ sequences, skin tones, combining
+ * marks and flags each stay whole). Falls back to code points when Intl.Segmenter
+ * is unavailable.
+ */
+export function segmentGraphemes(str: string): string[] {
+  if (str === "") return [];
+
+  const segmenter = getSegmenter();
+  if (segmenter === null) return [...str];
+
+  const graphemes: string[] = [];
+  for (const { segment } of segmenter.segment(str)) {
+    graphemes.push(segment);
+  }
+  return graphemes;
+}
+
+const graphemeWidthCache = new Map<string, number>();
+
+/** Display width of a single grapheme cluster, memoised. A newline occupies no cells. */
+export function graphemeWidth(g: string): number {
+  if (g === "\n") return 0;
+
+  const cached = graphemeWidthCache.get(g);
+  if (cached !== undefined) return cached;
+
+  const width = getDisplayWidth(g);
+  graphemeWidthCache.set(g, width);
+  return width;
+}
