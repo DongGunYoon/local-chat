@@ -2,12 +2,7 @@
 
 Private local network CLI chat. No server, no logs, just vibes.
 
-Same WiFi, terminal-based, fully encrypted, completely volatile.
-
-<!-- Screenshots: place images in assets/ and uncomment the lines below -->
-<!-- <p align="center">
-  <img src="assets/lobby.png" width="700" alt="Lobby chat" />
-</p> -->
+Same WiFi, terminal-based, encrypted private rooms, completely volatile.
 
 ## Quick Start
 
@@ -24,7 +19,7 @@ Enter a nickname and you're in the lobby — a global LAN chatroom where everyon
 - **Auto discovery** — Rooms broadcast via UDP. No IP sharing needed.
 - **Fully local** — No external server. Works on the same WiFi only.
 - **Volatile** — Messages exist in memory only. Leave the room, they're gone.
-- **Encrypted** — AES-256-GCM on all private room messages.
+- **Encrypted** — Private rooms use AES-256-GCM. The lobby is obfuscated only, not encrypted.
 - **Boss mode** — Instant fake system monitor overlay. Press `Tab` to hide everything.
 - **Korean input** — Full IME support with proper display width handling.
 - **Update check** — Notifies you on startup if a newer version is available.
@@ -45,9 +40,10 @@ Nickname → Lobby (global chat) → Browse Rooms → Create / Join → Private 
 | `/users` | | List online users |
 | `/erase` | `/e`, `/clear` | Clear all messages |
 | `/copy [N]` | `/c` | Copy Nth recent message to clipboard |
+| `/ㄹ`, `/ㄷ`, `/ㅊ` | | Korean-keyboard aliases for `/fake`, `/erase`, `/copy` (same physical keys as `/f`, `/e`, `/c`) |
 | `/fake` | `/f` | Boss mode |
 | `/version` | | Show current version |
-| `/quit` | | Leave room |
+| `/quit` | | Exit app |
 
 **Kaomoji** — type to send as a message:
 
@@ -70,22 +66,6 @@ Nickname → Lobby (global chat) → Browse Rooms → Create / Join → Private 
 | `Esc ×2` | Browse rooms |
 | `Ctrl+C` | Exit |
 
-## Screenshots
-
-> Add your own screenshots to `assets/` and uncomment the image tags.
-
-### Lobby Chat
-<!-- <img src="assets/lobby.png" width="700" alt="Lobby — global LAN chatroom" /> -->
-`npx local-chat` → enter nickname → lobby. Capture the header, chat messages, and input bar.
-
-### Room Browser
-<!-- <img src="assets/rooms.png" width="700" alt="Room browser — create or join" /> -->
-Press `Esc×2` in lobby → room list with available rooms and Create Room option.
-
-### Boss Mode
-<!-- <img src="assets/boss-mode.png" width="700" alt="Boss mode — fake system monitor" /> -->
-Press `Tab` anywhere → instant fake system monitor overlay. Press any key to return.
-
 ## How It Works
 
 ```
@@ -104,16 +84,16 @@ Lobby (all peers)
 └──────────┘                 └──────────┘
 ```
 
-- **Lobby**: All users exchange messages via UDP broadcast (port 41569). Obfuscated, not encrypted — meant for casual chat before joining a room.
+- **Lobby**: All users exchange messages via UDP broadcast (port 41569). Obfuscated, not encrypted (the key is a constant in the source, so anyone running the app can read lobby traffic) — meant for casual chat before joining a room.
 - **Private rooms**: The room creator runs a WebSocket server. All messages are encrypted with AES-256-GCM. Password rooms derive keys via PBKDF2; public rooms use a random session key.
 - **Discovery**: Room info is broadcast via UDP every 3 seconds (port 41568). The room browser shows available rooms with 🔒 for password-protected ones.
 
 ## Security
 
-- Messages encrypted with AES-256-GCM (Node.js built-in `crypto`)
-- Passwords hashed with SHA-256, keys derived with PBKDF2 (100k iterations)
-- Nothing written to disk. Ever.
-- Network-local only — no internet traffic
+- Private room messages are encrypted with AES-256-GCM (Node.js built-in `crypto`).
+- Threat model: this protects against casual snooping by people on the same WiFi. It does not protect against an active attacker on your network — a public room's session key is handed to every joiner in plaintext over ws://, and a password room sends a SHA-256 of the password in plaintext, so a captured join lets an attacker read that room. Use a password room with a strong password for anything sensitive.
+- Nothing is written to disk. Messages live in memory only.
+- Chat traffic never leaves the LAN. The only outbound request is a startup version check to registry.npmjs.org — disable it with `--no-update-check` or `LOCAL_CHAT_NO_UPDATE_CHECK=1`.
 
 ## Requirements
 

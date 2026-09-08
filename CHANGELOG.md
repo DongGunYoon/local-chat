@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- Reject malformed WebSocket/UDP packets instead of crashing every participant (non-string nickname/content, oversized frames)
+- Socket errors no longer crash the process when the UDP ports are busy
+- Room discovery now uses the announcer's real source address, fixing joins on VPN/multi-adapter hosts
+- `--no-update-check` / `LOCAL_CHAT_NO_UPDATE_CHECK=1` skip the startup npm version check
+- README: honest wording for encryption scope and the version check; removed template placeholders
+
 ## 0.1.2
 
 - Show `HH:MM` timestamp on every message (muted color, same line as nick)

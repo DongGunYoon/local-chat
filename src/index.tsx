@@ -8,10 +8,18 @@ meow(
   `
   Usage
     $ local-chat
+
+  Options
+    --no-update-check  Skip the npm version check on startup
 `,
   {
     importMeta: import.meta,
-    flags: {},
+    flags: {
+      noUpdateCheck: {
+        type: "boolean",
+        default: false,
+      },
+    },
   },
 );
 

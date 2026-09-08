@@ -7,3 +7,12 @@ coverage/
 npm-debug.log*
 .env
 .env.local
+
+# local promo/demo assets and tools (not part of the package)
+PROMOTION.md
+demo.tape
+*.cast
+*.gif
+logo-preview.js
+sniff-lobby.js
+.superpowers/

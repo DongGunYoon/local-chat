@@ -11,6 +11,13 @@ export function useVersionCheck(): VersionCheckResult {
   const [latestVersion, setLatestVersion] = useState<string | null>(null);
 
   useEffect(() => {
+    if (
+      process.env.LOCAL_CHAT_NO_UPDATE_CHECK === "1" ||
+      process.argv.includes("--no-update-check")
+    ) {
+      return;
+    }
+
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 5000);
 
