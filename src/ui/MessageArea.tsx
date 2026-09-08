@@ -1,84 +1,70 @@
 import { Box, Text } from "ink";
 import type React from "react";
-import type { ChatEntry } from "../network/types.js";
-import { estimateMessageRows, MessageItem } from "./MessageList.js";
+import { type MessageRow, MessageRowView } from "./MessageList.js";
 import { COLORS } from "./theme.js";
 
 type MessageAreaProps = {
-  messages: ChatEntry[];
+  rows: readonly MessageRow[];
   height: number;
-  columns: number;
+  /** Rows hidden below the bottom of the view. */
   scrollOffset: number;
+  hasMessages: boolean;
   hostNickname: string;
   showHostBadge?: boolean;
 };
 
 export function MessageArea({
-  messages,
+  rows,
   height,
-  columns,
   scrollOffset,
+  hasMessages,
   hostNickname,
   showHostBadge = true,
 }: MessageAreaProps): React.JSX.Element {
-  const totalMessages = messages.length;
-  const endIndex = Math.max(0, totalMessages - scrollOffset);
+  const total = rows.length;
+  const offset = Math.min(Math.max(0, scrollOffset), total);
+  const end = total - offset;
 
-  // paddingX={1} reduces available width by 2 columns
-  const effectiveCols = Math.max(1, columns - 2);
-
-  const isScrolledUp = scrollOffset > 0;
-
-  // Reserve rows for scroll indicators and 1-row safety buffer
-  let availableHeight = height;
-  if (isScrolledUp) availableHeight -= 1;
-  availableHeight = Math.max(1, availableHeight - 1);
-
-  // 시각적 줄 수 기반으로 보여줄 메시지 범위를 계산한다.
-  // 뒤에서부터 거꾸로 훑으며, availableHeight를 채울 때까지 메시지를 추가한다.
-  let usedRows = 0;
-  let startIndex = endIndex;
-  for (let i = endIndex - 1; i >= 0; i--) {
-    const msgRows = estimateMessageRows(messages[i], effectiveCols, hostNickname, showHostBadge);
-    if (usedRows + msgRows > availableHeight) break;
-    usedRows += msgRows;
-    startIndex = i;
+  // The bottom indicator, and then the top one, each cost a row of the view.
+  let avail = Math.max(1, height - (offset > 0 ? 1 : 0));
+  let start = Math.max(0, end - avail);
+  if (start > 0) {
+    avail = Math.max(1, avail - 1);
+    start = Math.max(0, end - avail);
   }
 
-  const visibleMessages = messages.slice(startIndex, endIndex);
-  const hasOlderMessages = startIndex > 0;
+  const visible = rows.slice(start, end);
 
   return (
     <Box flexDirection="column" flexGrow={1} paddingX={1}>
-      {hasOlderMessages && (
+      {start > 0 && (
         <Box justifyContent="center">
           <Text bold color={COLORS.system}>
-            {"\u25B2"} {startIndex} older messages {"\u00B7"} Shift+{"\u2191\u2193"} {"\u25B2"}
+            {"\u25B2"} {start} lines above {"\u00B7"} Shift+{"\u2191\u2193"}
           </Text>
         </Box>
       )}
-      {visibleMessages.length === 0 ? (
-        <Box flexGrow={1} justifyContent="center" alignItems="center">
-          <Text color={COLORS.muted}>No messages yet. Say something!</Text>
-        </Box>
-      ) : (
+      {hasMessages ? (
         <Box flexDirection="column" flexGrow={1}>
           <Box flexGrow={1} />
-          {visibleMessages.map((msg) => (
-            <MessageItem
-              key={msg.id}
-              entry={msg}
+          {visible.map((row) => (
+            <MessageRowView
+              key={row.key}
+              row={row}
               hostNickname={hostNickname}
               showHostBadge={showHostBadge}
-              columns={effectiveCols}
             />
           ))}
         </Box>
+      ) : (
+        <Box flexGrow={1} justifyContent="center" alignItems="center">
+          <Text color={COLORS.muted}>No messages yet. Say something!</Text>
+        </Box>
       )}
-      {isScrolledUp && (
+      {offset > 0 && (
         <Box justifyContent="center">
           <Text bold color={COLORS.primary}>
-            {"\u25BC"} {scrollOffset} newer below {"\u00B7"} Shift+{"\u2191\u2193"} {"\u25BC"}
+            {"\u25BC"} {offset} lines below {"\u00B7"} Shift+{"\u2191\u2193"}
           </Text>
         </Box>
       )}

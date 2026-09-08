@@ -34,39 +34,70 @@ export function truncateToWidth(str: string, maxWidth: number): string {
  */
 export function wrapText(text: string, maxWidth: number): string[] {
   if (maxWidth <= 0) return [text];
+  return wrapTextTwoWidth(text, maxWidth, maxWidth);
+}
 
-  // \r 제거 후 \n 기준으로 분리
-  const paragraphs = text.replace(/\r/g, "").split("\n");
-  const allLines: string[] = [];
+/**
+ * Wrap `text` with a first row of `firstWidth` cells and continuation rows of
+ * `contWidth` cells, so a message can hang under its prefix. Graphemes are never
+ * split, "\n" always breaks, and an empty paragraph yields an empty row. The rows of
+ * one paragraph concatenate back to that paragraph: nothing is dropped or added.
+ */
+export function wrapTextTwoWidth(text: string, firstWidth: number, contWidth: number): string[] {
+  const first = Math.max(1, firstWidth);
+  const cont = Math.max(1, contWidth);
+  const lines: string[] = [];
+  let isFirstLine = true;
 
-  for (const paragraph of paragraphs) {
-    if (stringWidth(paragraph) === 0) {
-      allLines.push("");
-      continue;
-    }
+  for (const paragraph of text.replace(/\r/g, "").split("\n")) {
+    let row: string[] = [];
+    let width = 0;
 
-    const chars = [...paragraph];
-    let currentLine = "";
-    let currentWidth = 0;
+    for (const grapheme of segmentGraphemes(paragraph)) {
+      const cells = graphemeWidth(grapheme);
+      const maxWidth = isFirstLine ? first : cont;
 
-    for (const char of chars) {
-      const charWidth = stringWidth(char);
-      if (currentWidth + charWidth > maxWidth && currentLine.length > 0) {
-        allLines.push(currentLine);
-        currentLine = char;
-        currentWidth = charWidth;
-      } else {
-        currentLine += char;
-        currentWidth += charWidth;
+      // A space that no longer fits stays on the row it closes: starting the next row
+      // with it would jog the hanging indent, and the terminal truncates it anyway.
+      const overflows = row.length > 0 && width + cells > maxWidth && grapheme !== " ";
+
+      // A row always keeps at least one grapheme, so layout cannot stall on a wide one.
+      if (overflows) {
+        const breakAt = wordBreakIndex(row);
+        lines.push((breakAt < 0 ? row : row.slice(0, breakAt + 1)).join(""));
+        isFirstLine = false;
+        row = breakAt < 0 ? [] : row.slice(breakAt + 1);
+        width = rowWidth(row);
       }
+
+      row.push(grapheme);
+      width += cells;
     }
 
-    if (currentLine) {
-      allLines.push(currentLine);
-    }
+    lines.push(row.join(""));
+    isFirstLine = false;
   }
 
-  return allLines.length > 0 ? allLines : [""];
+  return lines;
+}
+
+function rowWidth(row: readonly string[]): number {
+  let width = 0;
+  for (const grapheme of row) width += graphemeWidth(grapheme);
+  return width;
+}
+
+/**
+ * Index of the space to break after when the full row ends mid-word, or -1 when the
+ * row has to break at the grapheme (a CJK run, a URL, or a word longer than the row).
+ * Only ever asked about a row the next grapheme overflows, and that grapheme is never
+ * a space, so the text after the last space is always a partial word.
+ */
+function wordBreakIndex(row: readonly string[]): number {
+  const space = row.lastIndexOf(" ");
+  // Index 0 would leave an empty row; the last index means the word is already complete.
+  if (space <= 0 || space === row.length - 1) return -1;
+  return space;
 }
 
 /**

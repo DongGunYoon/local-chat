@@ -4,6 +4,7 @@ import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useBracketedPaste } from "../hooks/useBracketedPaste.js";
 import { useMessageInput } from "../hooks/useMessageInput.js";
+import { useMessageRows } from "../hooks/useMessageRows.js";
 import { useTerminalSize } from "../hooks/useTerminalSize.js";
 import { isEmpty } from "../input/textBuffer.js";
 import type { ChatClient } from "../network/client.js";
@@ -25,6 +26,7 @@ import { Header } from "./Header.js";
 import { HelpOverlay } from "./HelpOverlay.js";
 import { InputBar } from "./InputBar.js";
 import { MessageArea } from "./MessageArea.js";
+import { layoutMessage } from "./MessageList.js";
 import { COLORS, KAOMOJI_MAP, SYMBOLS } from "./theme.js";
 
 type ChatRoomProps = {
@@ -62,6 +64,8 @@ const INPUT_BORDER_ROWS = 2;
 /** Cells the input box spends around the text: border(2) + paddingX(2) + prompt(2). */
 const INPUT_SIDE_CELLS = 6;
 const MAX_INPUT_ROWS = 5;
+/** MessageArea's paddingX={1} on both sides. */
+const MESSAGE_AREA_PADDING = 2;
 
 function copyToClipboard(text: string): boolean {
   const commands = ["pbcopy", "xclip -selection clipboard", "xsel --clipboard --input"];
@@ -117,21 +121,41 @@ export function ChatRoom({
 
   // 방장 닉네임: 유저 목록의 첫 번째 (서버가 항상 방장을 첫 번째로 보낸다)
   const hostNickname = isPrivate ? users[0] || nickname : "";
+  const showHostBadge = isPrivate;
+  const effectiveCols = Math.max(1, columns - MESSAGE_AREA_PADDING);
+  const rowsAll = useMessageRows(messages, effectiveCols, hostNickname, showHostBadge);
+
+  // addMessage keeps empty deps so the network effects never re-subscribe (and re-announce)
+  // when the terminal is resized; it reads the current layout through this ref instead.
+  const layoutParamsRef = useRef({ cols: effectiveCols, hostNickname, showHostBadge });
+  layoutParamsRef.current = { cols: effectiveCols, hostNickname, showHostBadge };
 
   const addMessage = useCallback(
     (type: ChatEntry["type"], content: string, msgNickname?: string, isMe?: boolean) => {
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: nextMessageId(),
-          type,
-          nickname: msgNickname,
-          content,
-          timestamp: Date.now(),
-          isMe,
-        },
-      ]);
-      setScrollOffset(0);
+      const entry: ChatEntry = {
+        id: nextMessageId(),
+        type,
+        nickname: msgNickname,
+        content,
+        timestamp: Date.now(),
+        isMe,
+      };
+      setMessages((prev) => [...prev, entry]);
+
+      if (isMe === true) {
+        setScrollOffset(0);
+        return;
+      }
+
+      // While reading history, hold the view still: the new rows land below the viewport.
+      const params = layoutParamsRef.current;
+      const added = layoutMessage(
+        entry,
+        params.cols,
+        params.hostNickname,
+        params.showHostBadge,
+      ).length;
+      setScrollOffset((prev) => (prev > 0 ? prev + added : 0));
     },
     [],
   );
@@ -472,6 +496,12 @@ export function ChatRoom({
     ? rows - 1
     : Math.max(1, rows - 1 - HEADER_ROWS - (inputRows + INPUT_BORDER_ROWS) - escWarningRows);
 
+  // The top of the transcript needs one extra row of offset, which pays for the
+  // "N lines below" indicator MessageArea renders as soon as the view is scrolled.
+  const maxScroll = rowsAll.length > messageAreaHeight ? rowsAll.length - messageAreaHeight + 1 : 0;
+  const effectiveOffset = Math.min(scrollOffset, maxScroll);
+  const pageRows = Math.max(1, messageAreaHeight - 1);
+
   // 키보드 입력: 이 화면의 유일한 useInput
   useInput((inputStr, key) => {
     if (input.consumeChunkFlag()) return;
@@ -515,25 +545,23 @@ export function ChatRoom({
 
     // Shift+Up: 1줄 위로 스크롤
     if (key.upArrow && key.shift) {
-      setScrollOffset((prev) => Math.min(prev + 1, Math.max(0, messages.length - 1)));
+      setScrollOffset((prev) => Math.min(prev + 1, maxScroll));
       return;
     }
 
     // Shift+Down: 1줄 아래로 스크롤
     if (key.downArrow && key.shift) {
-      setScrollOffset((prev) => Math.max(0, prev - 1));
+      setScrollOffset((prev) => Math.max(0, Math.min(prev, maxScroll) - 1));
       return;
     }
 
     if (key.pageUp) {
-      setScrollOffset((prev) =>
-        Math.min(prev + messageAreaHeight, Math.max(0, messages.length - 1)),
-      );
+      setScrollOffset((prev) => Math.min(prev + pageRows, maxScroll));
       return;
     }
 
     if (key.pageDown) {
-      setScrollOffset((prev) => Math.max(0, prev - messageAreaHeight));
+      setScrollOffset((prev) => Math.max(0, Math.min(prev, maxScroll) - pageRows));
       return;
     }
 
@@ -554,8 +582,6 @@ export function ChatRoom({
     hintParts.push(`\u2195 ${input.caret.row + 1}/${input.rows.length}`);
   }
   const hintText = hintParts.length > 0 ? hintParts.join(` ${SYMBOLS.dot} `) : undefined;
-
-  const showHostBadge = isPrivate;
 
   return (
     <Box flexDirection="column" height={rows - 1}>
@@ -580,10 +606,10 @@ export function ChatRoom({
         <FakeOverlay height={messageAreaHeight} />
       ) : (
         <MessageArea
-          messages={messages}
+          rows={rowsAll}
           height={messageAreaHeight}
-          columns={columns}
-          scrollOffset={scrollOffset}
+          scrollOffset={effectiveOffset}
+          hasMessages={messages.length > 0}
           hostNickname={hostNickname}
           showHostBadge={showHostBadge}
         />
