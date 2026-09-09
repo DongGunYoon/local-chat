@@ -43,7 +43,7 @@ const INPUT: HelpItem[] = [
 
 const SHORTCUTS: HelpItem[] = [
   { key: "Tab", desc: "Boss mode (fast)" },
-  { key: "Shift+\u2191\u2193", desc: "Scroll messages" },
+  { key: "Shift+\u2191\u2193", desc: "Scroll one line" },
   { key: "PgUp/PgDn", desc: "Page scroll" },
   { key: "Esc \u00D72", desc: "Browse rooms" },
   { key: "Ctrl+C", desc: "Exit app" },

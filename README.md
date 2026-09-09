@@ -111,6 +111,10 @@ Lobby (all peers)
 - Nothing is written to disk. Messages live in memory only.
 - Chat traffic never leaves the LAN. The only outbound request is a startup version check to registry.npmjs.org — disable it with `--no-update-check` or `LOCAL_CHAT_NO_UPDATE_CHECK=1`.
 
+## Troubleshooting
+
+If your input method's composition preview appears at the bottom-left corner instead of inside the input box, try `LOCAL_CHAT_IME_CURSOR=1 npx local-chat` (experimental; relative cursor sync).
+
 ## Requirements
 
 - Node.js >= 18

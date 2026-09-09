@@ -1,7 +1,7 @@
 import { execSync } from "node:child_process";
 import { Box, Text, useInput } from "ink";
 import type React from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useInsertionEffect, useRef, useState } from "react";
 import { useBracketedPaste } from "../hooks/useBracketedPaste.js";
 import { useMessageInput } from "../hooks/useMessageInput.js";
 import { useMessageRows } from "../hooks/useMessageRows.js";
@@ -14,6 +14,7 @@ import { LOBBY_MAX_MESSAGE_BYTES, measureLobby } from "../network/limits.js";
 import type { LobbyPeer } from "../network/lobby.js";
 import type { ChatServer } from "../network/server.js";
 import type { ChatEntry } from "../network/types.js";
+import { setImeCursorTarget } from "../terminal/imeCursor.js";
 import {
   isSlashCommand,
   sanitizeIncoming,
@@ -66,6 +67,8 @@ const INPUT_SIDE_CELLS = 6;
 const MAX_INPUT_ROWS = 5;
 /** MessageArea's paddingX={1} on both sides. */
 const MESSAGE_AREA_PADDING = 2;
+/** 1-based terminal column of the input text: border(1) + paddingX(1) + prompt(2). */
+const INPUT_TEXT_COLUMN = 5;
 
 function copyToClipboard(text: string): boolean {
   const commands = [
@@ -494,6 +497,27 @@ export function ChatRoom({
     focus: !overlayActive,
     onSubmit: handleSubmit,
     onNotice: (message) => addMessage("system", message),
+  });
+
+  // Experimental IME caret sync: a no-op unless LOCAL_CHAT_IME_CURSOR=1 installed the proxy.
+  // The frame is rows - 1 lines tall and the InputBar's bottom border is its last line, so the
+  // caret sits visibleCount - caretVisible.row lines above that border, and Ink parks the real
+  // cursor one line below the frame. Runs on every render because any of those can move.
+  //
+  // Insertion, not layout: Ink writes the frame from the reconciler's resetAfterCommit, which
+  // React runs after mutation effects but before layout effects. The proxy applies the target
+  // on its next write, so a layout effect would aim the cursor one frame behind the caret.
+  // tests/terminal/commitOrder.test.tsx pins that ordering.
+  useInsertionEffect(() => {
+    setImeCursorTarget(
+      overlayActive
+        ? null
+        : {
+            rowsFromBottom: 1 + input.visibleCount - input.caretVisible.row,
+            col: INPUT_TEXT_COLUMN + input.caretVisible.col,
+          },
+    );
+    return () => setImeCursorTarget(null);
   });
 
   const escWarningRows = escPending ? 1 : 0;

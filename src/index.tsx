@@ -2,6 +2,7 @@
 
 import { render } from "ink";
 import meow from "meow";
+import { installCursorSync } from "./terminal/imeCursor.js";
 import { App } from "./ui/App.js";
 
 meow(
@@ -45,11 +46,16 @@ process.on("SIGTERM", () => {
   process.exit(0);
 });
 
+// Experimental, opt-in: wrap stdout so the terminal cursor follows the caret, which is
+// where an IME draws its composition preview. Unset, Ink writes to process.stdout as before.
+const stdout = process.env.LOCAL_CHAT_IME_CURSOR === "1" ? installCursorSync() : undefined;
+
 // Ink 앱 렌더링
 // Ctrl+C is handled by each screen: Ink's own handler would exit on a \x03 byte that
 // lands inside a paste.
 const { waitUntilExit } = render(<App />, {
   exitOnCtrlC: false,
+  ...(stdout ? { stdout } : {}),
 });
 
 waitUntilExit().then(() => {
