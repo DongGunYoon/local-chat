@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Reject malformed WebSocket/UDP packets instead of crashing every participant (non-string nickname/content, oversized frames)
+- Socket errors no longer crash the process when the UDP ports are busy
+- Room discovery now uses the announcer's real source address, fixing joins on VPN/multi-adapter hosts
+- `--no-update-check` / `LOCAL_CHAT_NO_UPDATE_CHECK=1` skip the startup npm version check
+- README: honest wording for encryption scope and the version check; removed template placeholders
 - Multiline chat input: Ctrl+J / Option+Enter / `\`+Enter insert a line break; Enter sends
 - Bracketed paste: multi-line pastes keep their line breaks and never send by accident
 - Emoji and combining characters edit as single units (no more broken half-characters)
@@ -11,11 +16,6 @@
 - Terminal control sequences in pasted or received text are stripped; tabs expand to spaces
 - `/copy` works on Windows (`clip`) and Wayland (`wl-copy`)
 - Private rooms: a message sent while reconnecting now shows "Not delivered" instead of vanishing
-- Reject malformed WebSocket/UDP packets instead of crashing every participant (non-string nickname/content, oversized frames)
-- Socket errors no longer crash the process when the UDP ports are busy
-- Room discovery now uses the announcer's real source address, fixing joins on VPN/multi-adapter hosts
-- `--no-update-check` / `LOCAL_CHAT_NO_UPDATE_CHECK=1` skip the startup npm version check
-- README: honest wording for encryption scope and the version check; removed template placeholders
 
 ## 0.1.2
 

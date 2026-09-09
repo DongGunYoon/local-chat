@@ -56,6 +56,14 @@ Nickname → Lobby (global chat) → Browse Rooms → Create / Join → Private 
 | `/disapproval` | `ಠ_ಠ` |
 | `/sparkles` | `(ﾉ◕ヮ◕)ﾉ*:・ﾟ✧` |
 
+## Messages
+
+Paste multi-line text and code freely — bracketed paste keeps line breaks, and tabs show as four spaces. Long messages scroll; nothing is truncated. If you've scrolled up to read history, incoming messages keep your place instead of yanking you back down; sending your own message jumps you to the bottom.
+
+A message that starts with `/` is treated as a command unless it spans several lines. To send a single-line message starting with `/` as text, prefix it with `//`.
+
+Lobby messages are limited to 800 bytes because the lobby is one UDP packet per message (about 260 CJK characters or 800 ASCII characters). The header shows a byte counter as you approach the limit, and an over-limit message is refused with the draft kept. Private rooms have no message limit.
+
 ## Shortcuts
 
 | Key | Action |
@@ -73,14 +81,6 @@ Nickname → Lobby (global chat) → Browse Rooms → Create / Join → Private 
 | `Ctrl+C` | Exit |
 
 Shift+Enter sends in most terminals (they cannot tell it apart from Enter); if your terminal is configured to send a CSI-u sequence for Shift+Enter, local-chat treats it as a new line.
-
-## Messages
-
-Paste multi-line text and code freely — bracketed paste keeps line breaks, and tabs show as four spaces. Long messages scroll; nothing is truncated. If you've scrolled up to read history, incoming messages keep your place instead of yanking you back down; sending your own message jumps you to the bottom.
-
-A message that starts with `/` is treated as a command unless it spans several lines. To send a single-line message starting with `/` as text, prefix it with `//`.
-
-Lobby messages are limited to 800 bytes because the lobby is one UDP packet per message (about 260 CJK characters or 800 ASCII characters). The header shows a byte counter as you approach the limit, and an over-limit message is refused with the draft kept. Private rooms have no message limit.
 
 ## How It Works
 
