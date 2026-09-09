@@ -68,7 +68,13 @@ const MAX_INPUT_ROWS = 5;
 const MESSAGE_AREA_PADDING = 2;
 
 function copyToClipboard(text: string): boolean {
-  const commands = ["pbcopy", "xclip -selection clipboard", "xsel --clipboard --input"];
+  const commands = [
+    "pbcopy",
+    "clip",
+    "wl-copy",
+    "xclip -selection clipboard",
+    "xsel --clipboard --input",
+  ];
   for (const cmd of commands) {
     try {
       execSync(cmd, { input: text, stdio: ["pipe", "ignore", "ignore"] });

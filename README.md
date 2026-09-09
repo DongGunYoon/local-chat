@@ -21,7 +21,7 @@ Enter a nickname and you're in the lobby — a global LAN chatroom where everyon
 - **Volatile** — Messages exist in memory only. Leave the room, they're gone.
 - **Encrypted** — Private rooms use AES-256-GCM. The lobby is obfuscated only, not encrypted.
 - **Boss mode** — Instant fake system monitor overlay. Press `Tab` to hide everything.
-- **Korean input** — Full IME support with proper display width handling.
+- **IME friendly** — Korean, Japanese and Chinese input methods work; wide characters and emoji are measured correctly.
 - **Update check** — Notifies you on startup if a newer version is available.
 
 ## Flow
@@ -60,11 +60,27 @@ Nickname → Lobby (global chat) → Browse Rooms → Create / Join → Private 
 
 | Key | Action |
 |-----|--------|
-| `Tab` | Boss mode (instant!) |
-| `Shift+↑↓` | Scroll messages |
+| `Enter` | Send |
+| `Ctrl+J` | New line (works in every terminal) |
+| `Option+Enter` / `Alt+Enter` | New line (macOS: enable "Use Option as Meta key" in Terminal.app, or Option = Esc+ in iTerm2) |
+| `\` then `Enter` | New line |
+| `↑ ↓` | Move inside the draft |
+| `Ctrl+A` / `Ctrl+E` / `Ctrl+U` | Line start / line end / clear draft |
+| `Shift+↑↓` | Scroll one line |
 | `PgUp / PgDn` | Page scroll |
+| `Tab` | Boss mode |
 | `Esc ×2` | Browse rooms |
 | `Ctrl+C` | Exit |
+
+Shift+Enter sends in most terminals (they cannot tell it apart from Enter); if your terminal is configured to send a CSI-u sequence for Shift+Enter, local-chat treats it as a new line.
+
+## Messages
+
+Paste multi-line text and code freely — bracketed paste keeps line breaks, and tabs show as four spaces. Long messages scroll; nothing is truncated. If you've scrolled up to read history, incoming messages keep your place instead of yanking you back down; sending your own message jumps you to the bottom.
+
+A message that starts with `/` is treated as a command unless it spans several lines. To send a single-line message starting with `/` as text, prefix it with `//`.
+
+Lobby messages are limited to 800 bytes because the lobby is one UDP packet per message (about 260 CJK characters or 800 ASCII characters). The header shows a byte counter as you approach the limit, and an over-limit message is refused with the draft kept. Private rooms have no message limit.
 
 ## How It Works
 
