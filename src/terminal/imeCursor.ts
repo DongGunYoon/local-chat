@@ -12,7 +12,8 @@ const OFF_VALUES = new Set(["0", "false", "off", "no"]);
 
 /**
  * The sync is on by default: it is what puts an input method's composition preview inside
- * the input box. It stays off when stdout is not a terminal (nothing to position), or when
+ * the chat input box (only ChatRoom sets a target; the nickname and room-creation prompts
+ * leave it null). It stays off when stdout is not a terminal (nothing to position), or when
  * the user opts out with `--no-ime-cursor` or `LOCAL_CHAT_IME_CURSOR=0`. The flag is read
  * from argv rather than meow because meow folds `--no-*` into a negated flag.
  */
