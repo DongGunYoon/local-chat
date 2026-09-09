@@ -7,7 +7,8 @@
 - Room discovery now uses the announcer's real source address, fixing joins on VPN/multi-adapter hosts
 - `--no-update-check` / `LOCAL_CHAT_NO_UPDATE_CHECK=1` skip the startup npm version check
 - README: honest wording for encryption scope and the version check; removed template placeholders
-- Multiline chat input: Ctrl+J / Option+Enter / `\`+Enter insert a line break; Enter sends
+- Multiline chat input: Shift+Enter inserts a line break (so do Ctrl+Enter, Option/Alt+Enter, Ctrl+J and `\`+Enter); Enter sends
+- The app asks the terminal for the kitty keyboard protocol and xterm modifyOtherKeys so Shift+Enter can be reported where the terminal supports it (turn off with `--no-key-protocol` / `LOCAL_CHAT_KEY_PROTOCOL=0`); the sequences are translated before Ink parses them, which also prevents a crash on keypad keys
 - Bracketed paste: multi-line pastes keep their line breaks and never send by accident
 - Emoji and combining characters edit as single units (no more broken half-characters)
 - The draft is never cleared unless the message was actually sent; unknown commands and over-limit lobby messages keep it

@@ -130,3 +130,17 @@ describe("classifyKey - text", () => {
     expect(classifyKey(ESC, { ...toInkEvent("a").key }, context())).toEqual({ type: "ignore" });
   });
 });
+
+describe("classifyKey - CSI remnants", () => {
+  it("ignores an unnamed CSI remnant instead of inserting it as text", () => {
+    expect(classifyRaw(`${ESC}[57400;5u`)).toEqual({ type: "ignore" });
+    expect(classifyRaw(`${ESC}[>4;1m`)).toEqual({ type: "ignore" });
+    expect(classifyRaw(`${ESC}[?1u`)).toEqual({ type: "ignore" });
+    expect(classifyRaw(`${ESC}[27;3;120~`)).toEqual({ type: "ignore" });
+  });
+
+  it("still inserts pasted text that merely looks bracket-like", () => {
+    expect(classifyRaw("[A")).toEqual({ type: "bulkInsert", text: "[A" });
+    expect(classifyRaw("[")).toEqual({ type: "insert", text: "[" });
+  });
+});

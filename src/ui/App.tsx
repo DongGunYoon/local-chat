@@ -1,6 +1,7 @@
 import { Box, Text } from "ink";
 import type React from "react";
 import { useCallback, useRef, useState } from "react";
+import { useKeyboardProtocol } from "../hooks/useKeyboardProtocol.js";
 import { ChatClient } from "../network/client.js";
 import { RoomBroadcaster } from "../network/discovery.js";
 import { LobbyPeer } from "../network/lobby.js";
@@ -25,6 +26,7 @@ type PrivateChatState = {
 };
 
 export function App(): React.JSX.Element {
+  useKeyboardProtocol();
   const [screen, setScreen] = useState<Screen>("nickname");
   const [nickname, setNickname] = useState<string | null>(null);
   const [lobbyPeer, setLobbyPeer] = useState<LobbyPeer | null>(null);

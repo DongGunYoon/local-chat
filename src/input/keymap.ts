@@ -53,6 +53,12 @@ export const FAST_RETURN_MS = 30;
  */
 export const NEWLINE_SEQUENCES: readonly RegExp[] = [/^\[13;[2-8]u$/, /^\[27;[2-8];13~$/];
 
+/**
+ * The remnant of a CSI sequence Ink could not name (its leading ESC stripped). The stdin
+ * translator removes these before Ink sees them; this is the backstop for the no-proxy path.
+ */
+const CSI_REMNANT = /^\[[\d;:?<=>]+[A-Za-z~@]$/;
+
 const ESC = "\u001B";
 
 /** True for "\r" and for one or more ESC followed by "\r" (Option/Alt+Enter). */
@@ -132,6 +138,7 @@ export function classifyKey(input: string, key: Key, ctx: KeyContext): InputActi
 
   // 10. Plain text.
   if (input.length === 0) return { type: "ignore" };
+  if (CSI_REMNANT.test(input)) return { type: "ignore" };
   if (segmentGraphemes(input).length >= 2) return { type: "bulkInsert", text: input };
   // Never insert an escape sequence remnant as if it were typed text.
   if (input.includes(ESC)) return { type: "ignore" };

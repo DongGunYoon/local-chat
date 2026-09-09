@@ -3,6 +3,7 @@ import { Box, Text, useInput } from "ink";
 import type React from "react";
 import { useCallback, useEffect, useInsertionEffect, useRef, useState } from "react";
 import { useBracketedPaste } from "../hooks/useBracketedPaste.js";
+import { useEnhancedKeys } from "../hooks/useKeyboardProtocol.js";
 import { useMessageInput } from "../hooks/useMessageInput.js";
 import { useMessageRows } from "../hooks/useMessageRows.js";
 import { useTerminalSize } from "../hooks/useTerminalSize.js";
@@ -15,6 +16,7 @@ import type { LobbyPeer } from "../network/lobby.js";
 import type { ChatServer } from "../network/server.js";
 import type { ChatEntry } from "../network/types.js";
 import { setImeCursorTarget } from "../terminal/imeCursor.js";
+import { setModifiedEnterMode } from "../terminal/keyboardProtocol.js";
 import {
   isSlashCommand,
   sanitizeIncoming,
@@ -56,7 +58,9 @@ const COMMAND_ALIASES: Record<string, string> = {
 };
 
 const ESC = "\u001B";
-const PLACEHOLDER = "Type a message\u2026 (Ctrl+J for a new line)";
+/** Shown once the terminal has confirmed it reports Shift+Enter; the legacy hint names the key that works everywhere. */
+const PLACEHOLDER_ENHANCED = "Type a message\u2026 (Shift+Enter for a new line)";
+const PLACEHOLDER_LEGACY = "Type a message\u2026 (Ctrl+J for a new line)";
 
 /** The header box: top border, one line, bottom border. */
 const HEADER_ROWS = 3;
@@ -507,6 +511,14 @@ export function ChatRoom({
     onNotice: notify,
   });
 
+  // While the chat editor is on screen a Shift/Ctrl/Alt+Enter is a newline; elsewhere the
+  // stdin translator keeps it as plain Enter so ink-text-input fields submit.
+  useEffect(() => {
+    setModifiedEnterMode("newline");
+    return () => setModifiedEnterMode("return");
+  }, []);
+  const enhancedKeys = useEnhancedKeys();
+
   // IME caret sync: a no-op when the entry point did not install the proxy (--no-ime-cursor,
   // LOCAL_CHAT_IME_CURSOR=0, or stdout is not a terminal).
   // The frame is rows - 1 lines tall and the InputBar's bottom border is its last line, so the
@@ -673,7 +685,7 @@ export function ChatRoom({
           rows={input.visibleRows}
           caret={overlayActive ? null : input.caretVisible}
           width={innerWidth}
-          placeholder={PLACEHOLDER}
+          placeholder={enhancedKeys ? PLACEHOLDER_ENHANCED : PLACEHOLDER_LEGACY}
           focus={!overlayActive}
           isEmpty={isEmpty(input.state)}
         />

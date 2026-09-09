@@ -3,6 +3,7 @@
 import { render } from "ink";
 import meow from "meow";
 import { installCursorSync, shouldSyncImeCursor } from "./terminal/imeCursor.js";
+import { disableKeyProtocols, installKeyTranslator } from "./terminal/keyboardProtocol.js";
 import { App } from "./ui/App.js";
 
 meow(
@@ -13,6 +14,7 @@ meow(
   Options
     --no-update-check  Skip the npm version check on startup
     --no-ime-cursor    Leave the terminal cursor where Ink parks it (turns off IME caret sync)
+    --no-key-protocol  Do not ask the terminal to report Shift+Enter (kitty keyboard protocol / modifyOtherKeys)
 `,
   {
     importMeta: import.meta,
@@ -31,7 +33,9 @@ process.stdout.write("\x1B[H");
 
 // 종료 시 원래 터미널로 복원하는 함수
 function restoreScreen(): void {
-  // Bracketed paste mode is turned off first: it outlives the alternate screen.
+  // The keyboard protocols and bracketed paste are turned off first: they outlive the
+  // alternate screen, and the shell would otherwise receive escape codes for Esc.
+  disableKeyProtocols();
   process.stdout.write("\x1B[?2004l");
   process.stdout.write("\x1B[?1049l");
 }
@@ -52,11 +56,16 @@ process.on("SIGTERM", () => {
 // stdout; then Ink writes to process.stdout as before.
 const stdout = shouldSyncImeCursor() ? installCursorSync() : undefined;
 
+// Wrap stdin so Shift/Ctrl/Alt+Enter and the other enhanced key encodings reach Ink as the
+// legacy bytes it understands; without this Ink 5.2.1 crashes on some of them.
+const stdin = installKeyTranslator();
+
 // Ink 앱 렌더링
 // Ctrl+C is handled by each screen: Ink's own handler would exit on a \x03 byte that
 // lands inside a paste.
 const { waitUntilExit } = render(<App />, {
   exitOnCtrlC: false,
+  stdin,
   ...(stdout ? { stdout } : {}),
 });
 

@@ -32,9 +32,9 @@ const KAOMOJI: HelpItem[] = ["/shrug", "/tableflip", "/lenny", "/sparkles"].map(
 
 const INPUT: HelpItem[] = [
   { key: "Enter", desc: "Send" },
-  { key: "Ctrl+J", desc: "New line" },
+  { key: "Shift+Enter", desc: "New line" },
+  { key: "Ctrl+J, \\ + Enter", desc: "New line (any term)" },
   { key: "Option+Enter", desc: "New line (Meta)" },
-  { key: "\\ + Enter", desc: "New line" },
   { key: "\u2191 \u2193", desc: "Move in draft" },
   { key: "Ctrl+A / Ctrl+E", desc: "Line start / end" },
   { key: "Ctrl+U", desc: "Clear draft" },
