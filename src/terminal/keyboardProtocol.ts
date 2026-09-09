@@ -120,8 +120,9 @@ export function createStdinProxy(
 
   const read = (): string | null => {
     let raw = "";
-    let chunk: unknown;
-    while ((chunk = real.read()) !== null) {
+    for (;;) {
+      const chunk: unknown = real.read();
+      if (chunk === null) break;
       raw += String(chunk);
     }
 
@@ -213,7 +214,11 @@ export function shouldUseKeyProtocol(
 type Writer = (text: string) => unknown;
 const writeStdout: Writer = (text) => process.stdout.write(text);
 
-/** Requests both encodings and asks which one the terminal speaks. Call after raw mode is on. */
+/**
+ * Requests both encodings and asks which one the terminal speaks. Call after raw mode is on.
+ * The queries follow the requests on purpose: a reply then reports the state just set, and any
+ * reply at all means the terminal implements that protocol.
+ */
 export function enableKeyProtocols(write: Writer = writeStdout): void {
   if (protocolsEnabled) return;
   protocolsEnabled = true;

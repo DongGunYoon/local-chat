@@ -4,6 +4,8 @@ import { COLORS, KAOMOJI_MAP, SYMBOLS } from "./theme.js";
 
 type HelpOverlayProps = {
   height: number;
+  /** Whether the terminal has confirmed it reports Shift+Enter; the Input section says so either way. */
+  enhancedKeys?: boolean;
 };
 
 type HelpItem = {
@@ -30,16 +32,19 @@ const KAOMOJI: HelpItem[] = ["/shrug", "/tableflip", "/lenny", "/sparkles"].map(
   desc: KAOMOJI_MAP[cmd],
 }));
 
-const INPUT: HelpItem[] = [
-  { key: "Enter", desc: "Send" },
-  { key: "Shift+Enter", desc: "New line" },
-  { key: "Ctrl+J, \\ + Enter", desc: "New line (any term)" },
-  { key: "Option+Enter", desc: "New line (Meta)" },
-  { key: "\u2191 \u2193", desc: "Move in draft" },
-  { key: "Ctrl+A / Ctrl+E", desc: "Line start / end" },
-  { key: "Ctrl+U", desc: "Clear draft" },
-  { key: "//text", desc: "Send a literal /" },
-];
+function inputItems(enhancedKeys: boolean): HelpItem[] {
+  return [
+    { key: "Enter", desc: "Send" },
+    // In a terminal that cannot report it, Shift+Enter is Enter: say so rather than promise.
+    { key: "Shift+Enter", desc: enhancedKeys ? "New line" : "Unsupported here" },
+    { key: "Ctrl+J, \\ + Enter", desc: "New line (any term)" },
+    { key: "Option+Enter", desc: "New line (Meta)" },
+    { key: "\u2191 \u2193", desc: "Move in draft" },
+    { key: "Ctrl+A / Ctrl+E", desc: "Line start / end" },
+    { key: "Ctrl+U", desc: "Clear draft" },
+    { key: "//text", desc: "Send a literal /" },
+  ];
+}
 
 const SHORTCUTS: HelpItem[] = [
   { key: "Tab", desc: "Boss mode (fast)" },
@@ -73,7 +78,7 @@ function Section({
   );
 }
 
-export function HelpOverlay({ height }: HelpOverlayProps): React.JSX.Element {
+export function HelpOverlay({ height, enhancedKeys = false }: HelpOverlayProps): React.JSX.Element {
   return (
     <Box flexDirection="column" height={height} paddingX={2}>
       <Box justifyContent="center">
@@ -90,7 +95,7 @@ export function HelpOverlay({ height }: HelpOverlayProps): React.JSX.Element {
           <Section title="Kaomoji" items={KAOMOJI} />
         </Box>
         <Box flexDirection="column" width="50%">
-          <Section title="Input" items={INPUT} />
+          <Section title="Input" items={inputItems(enhancedKeys)} />
           <Section title="Shortcuts" items={SHORTCUTS} />
         </Box>
       </Box>

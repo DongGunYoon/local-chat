@@ -48,4 +48,14 @@ describe("HelpOverlay", () => {
     }
     expect(frame).toContain("Press any key to close");
   });
+
+  it("promises Shift+Enter only once the terminal has confirmed it", () => {
+    const legacy = frameOf(<HelpOverlay height={HEIGHT} />);
+    expect(legacy).toContain("Shift+Enter");
+    expect(legacy).toContain("Unsupported here");
+
+    const enhanced = frameOf(<HelpOverlay height={HEIGHT} enhancedKeys />);
+    expect(enhanced).not.toContain("Unsupported here");
+    expect(enhanced).toMatch(/Shift\+Enter\s+New line/);
+  });
 });

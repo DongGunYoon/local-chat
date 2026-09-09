@@ -139,6 +139,11 @@ describe("classifyKey - CSI remnants", () => {
     expect(classifyRaw(`${ESC}[27;3;120~`)).toEqual({ type: "ignore" });
   });
 
+  it("ignores a partial CSI tail the stdin translator gave up on", () => {
+    expect(classifyRaw(`${ESC}[1;`)).toEqual({ type: "ignore" });
+    expect(classifyRaw(`${ESC}[13`)).toEqual({ type: "ignore" });
+  });
+
   it("still inserts pasted text that merely looks bracket-like", () => {
     expect(classifyRaw("[A")).toEqual({ type: "bulkInsert", text: "[A" });
     expect(classifyRaw("[")).toEqual({ type: "insert", text: "[" });

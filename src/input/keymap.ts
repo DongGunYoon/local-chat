@@ -58,6 +58,8 @@ export const NEWLINE_SEQUENCES: readonly RegExp[] = [/^\[13;[2-8]u$/, /^\[27;[2-
  * translator removes these before Ink sees them; this is the backstop for the no-proxy path.
  */
 const CSI_REMNANT = /^\[[\d;:?<=>]+[A-Za-z~@]$/;
+/** The same without its final byte: a tail the translator released after waiting for it. */
+const CSI_PARTIAL = /^\[[\d;:?<=>]+$/;
 
 const ESC = "\u001B";
 
@@ -138,7 +140,7 @@ export function classifyKey(input: string, key: Key, ctx: KeyContext): InputActi
 
   // 10. Plain text.
   if (input.length === 0) return { type: "ignore" };
-  if (CSI_REMNANT.test(input)) return { type: "ignore" };
+  if (CSI_REMNANT.test(input) || CSI_PARTIAL.test(input)) return { type: "ignore" };
   if (segmentGraphemes(input).length >= 2) return { type: "bulkInsert", text: input };
   // Never insert an escape sequence remnant as if it were typed text.
   if (input.includes(ESC)) return { type: "ignore" };

@@ -57,15 +57,16 @@ process.on("SIGTERM", () => {
 const stdout = shouldSyncImeCursor() ? installCursorSync() : undefined;
 
 // Wrap stdin so Shift/Ctrl/Alt+Enter and the other enhanced key encodings reach Ink as the
-// legacy bytes it understands; without this Ink 5.2.1 crashes on some of them.
-const stdin = installKeyTranslator();
+// legacy bytes it understands; without this Ink 5.2.1 crashes on some of them. Only a terminal
+// sends key sequences, and leaving process.stdin alone keeps Ink's own non-TTY error message.
+const stdin = process.stdin.isTTY ? installKeyTranslator() : undefined;
 
 // Ink 앱 렌더링
 // Ctrl+C is handled by each screen: Ink's own handler would exit on a \x03 byte that
 // lands inside a paste.
 const { waitUntilExit } = render(<App />, {
   exitOnCtrlC: false,
-  stdin,
+  ...(stdin ? { stdin } : {}),
   ...(stdout ? { stdout } : {}),
 });
 

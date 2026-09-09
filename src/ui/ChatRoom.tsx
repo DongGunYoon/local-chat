@@ -660,7 +660,7 @@ export function ChatRoom({
       )}
 
       {showHelp ? (
-        <HelpOverlay height={messageAreaHeight} />
+        <HelpOverlay height={messageAreaHeight} enhancedKeys={enhancedKeys} />
       ) : showFake ? (
         <FakeOverlay height={messageAreaHeight} />
       ) : (

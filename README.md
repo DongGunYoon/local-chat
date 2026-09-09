@@ -14,8 +14,6 @@ That is it.
 
 Type a nickname and you are in the **lobby**, a chat room shared by everyone running local-chat on the network. Press `Esc` twice to browse **private rooms**, and create or join one. Nothing is installed globally, nothing is written to disk, and messages live in memory only: close the terminal and they are gone.
 
-<!-- demo gif goes here -->
-
 ## Good for
 
 - A dorm floor or a campus lab
@@ -32,7 +30,7 @@ Anywhere people share a network and everyone already has a terminal open. The co
 
 > **Press `Tab` and the screen becomes a system monitor.**
 >
-> The header says `Tab on EMERGENCY` so you never have to remember it. `/fake` and `/f` do the same thing. Any key brings the chat straight back, with your half-typed message still in the input box.
+> The header hint reads `Tab on EMERGENCY`. `/fake` and `/f` do the same thing. Any key brings the chat straight back, with your half-typed message still in the input box.
 
 ```
 ──── SYSTEM MONITOR / ────
@@ -45,7 +43,7 @@ Anywhere people share a network and everyone already has a terminal open. The co
 
   MEM  ██████████░░░░░ 68.2% 14.9G / 21.8G
 
-  SWAP ██░░░░░░░░░░░░░ 12.4% 0.5G / 4.0G
+  SWAP ██░░░░░░░░░░░░░ 12.4% 1.5G / 12.0G
 
   DISK ████████████░░░ 81.4% 302.6G / 371.7G
 
@@ -90,8 +88,9 @@ Your draft survives everything: unknown commands, refused messages and boss mode
 | Key | Action |
 |-----|--------|
 | `Enter` | Send |
-| `Shift+Enter` | New line |
-| `Ctrl+Enter`, `Option+Enter` / `Alt+Enter`, `Ctrl+J`, `\` then `Enter` | New line |
+| `Shift+Enter`, `Ctrl+Enter` | New line (see the terminal table below) |
+| `Option+Enter` / `Alt+Enter` | New line (when the terminal sends Option/Alt as Meta, or via the table below) |
+| `Ctrl+J`, `\` then `Enter` | New line, in every terminal |
 | `↑` / `↓` | Move inside the draft |
 | `Ctrl+A` / `Ctrl+E` | Line start / line end |
 | `Ctrl+U` | Clear the draft |
@@ -103,19 +102,21 @@ Your draft survives everything: unknown commands, refused messages and boss mode
 
 ### Shift+Enter in your terminal
 
-A terminal can only report Shift+Enter, Ctrl+Enter and Option+Enter as something other than Enter if it speaks the [kitty keyboard protocol](https://sw.kovidgoyal.net/kitty/keyboard-protocol/) or xterm's `modifyOtherKeys`. local-chat asks for both at startup, and the input box says `Shift+Enter for a new line` once the terminal has confirmed one of them.
+A terminal can only report Shift+Enter and Ctrl+Enter as something other than Enter if it speaks the [kitty keyboard protocol](https://sw.kovidgoyal.net/kitty/keyboard-protocol/) or xterm's `modifyOtherKeys`. local-chat asks for both at startup, and the input box says `Shift+Enter for a new line` once the terminal has confirmed one of them. Option+Enter is different: it works in any terminal that sends Option (Alt) as Meta, with or without a protocol.
 
 | Terminal | Shift+Enter |
 |----------|-------------|
-| iTerm2 3.5+, Ghostty, kitty, WezTerm, foot, Rio, Alacritty 0.16+, Warp, Konsole 26.08+, Zellij | Works out of the box |
+| iTerm2 3.5+, Ghostty, kitty, foot, Rio, Alacritty 0.16+, Warp, Konsole 26.08+ | Works out of the box |
+| WezTerm | Works through `modifyOtherKeys`; if it does not, set `enable_kitty_keyboard = true` in wezterm.lua |
+| Zellij | Works when the host terminal supports the kitty keyboard protocol |
 | VS Code 1.110+ | Works out of the box (`terminal.integrated.enableKittyKeyboardProtocol` is on by default) |
 | Windows Terminal | Preview 1.25+ works out of the box. On the stable release add `{ "command": { "action": "sendInput", "input": "\u001b[13;2u" }, "keys": "shift+enter" }` to `actions` in settings.json |
 | VS Code before 1.110 | Add `{ "key": "shift+enter", "command": "workbench.action.terminal.sendSequence", "args": { "text": "\u001b[13;2u" }, "when": "terminalFocus" }` to keybindings.json |
-| tmux | `set -s extended-keys always` in `.tmux.conf`; the outer terminal must support modified keys |
+| tmux | `set -s extended-keys always` in `.tmux.conf`; the outer terminal must support `modifyOtherKeys` (so not kitty, which refuses it). tmux does not answer the capability queries, so the input box keeps showing the `Ctrl+J` hint even though Shift+Enter works |
 | macOS Terminal.app | Not possible: Terminal.app cannot rebind Return and speaks neither protocol. Turn on "Use Option as Meta key" (Settings → Profiles → Keyboard) and use `Option+Enter`, or use `Ctrl+J` |
 | GNOME Terminal and other VTE terminals, Hyper | Not supported. Use `Ctrl+J` or `\` then `Enter` |
 
-`Ctrl+J` and `\` then `Enter` insert a new line in every terminal with no setup. If a terminal misbehaves after the protocol requests, start with `--no-key-protocol` or `LOCAL_CHAT_KEY_PROTOCOL=0`.
+`Ctrl+J` and `\` then `Enter` insert a new line in every terminal with no setup. If a terminal misbehaves after the protocol requests, start with `--no-key-protocol` or `LOCAL_CHAT_KEY_PROTOCOL=0`: the requests are skipped, and sequences a terminal sends on its own (the keybinding recipes above) are still understood.
 
 ## Commands
 

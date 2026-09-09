@@ -44,6 +44,15 @@ describe("translateChunk - Enter and its modifiers", () => {
     expect(output(`${CSI}27;2;13~`, "return")).toBe("\r");
   });
 
+  it("ignores Caps Lock and Num Lock bits, which the kitty protocol reports on functional keys", () => {
+    expect(output(`${CSI}13;66u`)).toBe("\n"); // Shift+Enter with Caps Lock
+    expect(output(`${CSI}13;130u`)).toBe("\n"); // Shift+Enter with Num Lock
+    expect(output(`${CSI}13;65u`)).toBe("\r"); // Enter with Caps Lock only
+    expect(output(`${CSI}27;65u`)).toBe(ESC); // Esc with Caps Lock
+    expect(output(`${CSI}99;133u`)).toBe("\u0003"); // Ctrl+C with Num Lock
+    expect(output(`${CSI}97;69u`)).toBe("\u0001"); // Ctrl+A with Caps Lock
+  });
+
   it("keeps an unmodified kitty Enter as Enter", () => {
     expect(output(`${CSI}13u`)).toBe("\r");
     expect(output(`${CSI}13;1u`)).toBe("\r");
@@ -77,6 +86,19 @@ describe("translateChunk - other keys", () => {
     expect(output(`${CSI}27;2;65~`)).toBe("A");
     expect(output(`${CSI}27;2;33~`)).toBe("!");
     expect(output(`${CSI}27;2;196~`)).toBe("Ä");
+  });
+
+  it("emits the shifted character for a shift-only kitty text key", () => {
+    expect(output(`${CSI}97;2u`)).toBe("A"); // no alternate key given: upper-case the letter
+    expect(output(`${CSI}97:65;2u`)).toBe("A"); // alternate (shifted) key given
+    expect(output(`${CSI}49:33;2u`)).toBe("!"); // Shift+1 with the shifted key given
+    expect(output(`${CSI}49;2u`)).toBe("1"); // Shift+1 without it: nothing better to do
+  });
+
+  it("drops codepoints that are not Unicode scalar values instead of throwing", () => {
+    expect(output(`${CSI}1114112u`)).toBe(""); // beyond U+10FFFF
+    expect(output(`${CSI}55296u`)).toBe(""); // lone surrogate
+    expect(output(`${CSI}99999999999u`)).toBe("");
   });
 
   it("maps Shift+Tab onto CSI Z and keeps plain Tab", () => {

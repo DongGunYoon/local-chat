@@ -40,6 +40,8 @@ export const MAX_HELD_BYTES = 16;
 const SHIFT = 1;
 const ALT = 2;
 const CTRL = 4;
+/** Caps Lock and Num Lock: the kitty protocol reports them on functional keys, and they never change the key. */
+const LOCKS = 64 | 128;
 
 // Functional key numbers from the kitty protocol's private-use range that have legacy forms.
 const KP_ENTER = 57414;
@@ -72,8 +74,13 @@ function legacyCursorKey(suffix: string, mods: number): string {
  * Turns one decoded key (a Unicode codepoint or a kitty functional key number, plus the
  * 1-based modifier parameter) into legacy bytes, or null when the key has no legacy form.
  */
-export function decodeKey(code: number, mods: number, enter: ModifiedEnterMode): string | null {
-  const bits = Number.isFinite(mods) && mods >= 1 ? mods - 1 : 0;
+export function decodeKey(
+  code: number,
+  mods: number,
+  enter: ModifiedEnterMode,
+  shiftedCode: number | null = null,
+): string | null {
+  const bits = (Number.isFinite(mods) && mods >= 1 ? mods - 1 : 0) & ~LOCKS;
   const shift = (bits & SHIFT) !== 0;
   const alt = (bits & ALT) !== 0;
   const ctrl = (bits & CTRL) !== 0;
@@ -105,11 +112,27 @@ export function decodeKey(code: number, mods: number, enter: ModifiedEnterMode):
   }
   if (ctrl && alt) return null;
 
-  if (code < 32) return null;
-  const text = String.fromCodePoint(code);
+  if (code < 32 || !isScalarValue(code)) return null;
+  let text = String.fromCodePoint(code);
+  if (shift && !alt) {
+    // A shifted text key normally arrives as plain text; when it comes as a sequence, the
+    // shifted codepoint is either given as the alternate key or is the upper-case letter.
+    if (shiftedCode !== null && isScalarValue(shiftedCode) && shiftedCode >= 32) {
+      text = String.fromCodePoint(shiftedCode);
+    } else if (text.toUpperCase().length === 1) {
+      text = text.toUpperCase();
+    }
+  }
   // Option/Alt+key arrives as ESC+key in every terminal that sends Option as Meta.
   if (alt) return ESC + text;
   return text;
+}
+
+/** True for a codepoint String.fromCodePoint accepts and that is not a lone surrogate. */
+function isScalarValue(code: number): boolean {
+  return (
+    Number.isInteger(code) && code >= 0 && code <= 0x10ffff && (code < 0xd800 || code > 0xdfff)
+  );
 }
 
 /** Parses one modifier parameter; a missing or malformed value means "no modifiers". */
@@ -134,10 +157,16 @@ export function decodeCsi(params: string, final: string, enter: ModifiedEnterMod
         ? { type: "reply", reply: { kind: "kitty", flags } }
         : { type: "drop" };
     }
-    // CSI code[:alternates] ; mods[:event] u
-    const match = /^(\d+)(?::[\d:]*)?(?:;(\d*)(?::\d*)?)?$/.exec(params);
+    // CSI code[:shifted[:base]] ; mods[:event] u
+    const match = /^(\d+)(?::(\d*)(?::\d*)?)?(?:;(\d*)(?::\d*)?)?$/.exec(params);
     if (!match) return { type: "drop" };
-    const text = decodeKey(Number.parseInt(match[1] ?? "", 10), parseMods(match[2]), enter);
+    const shifted = match[2] ? Number.parseInt(match[2], 10) : null;
+    const text = decodeKey(
+      Number.parseInt(match[1] ?? "", 10),
+      parseMods(match[3]),
+      enter,
+      shifted,
+    );
     return text === null ? { type: "drop" } : { type: "text", text };
   }
 
