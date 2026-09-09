@@ -62,7 +62,7 @@ Paste multi-line text and code freely — bracketed paste keeps line breaks, and
 
 A message that starts with `/` is treated as a command unless it spans several lines. To send a single-line message starting with `/` as text, prefix it with `//`.
 
-Lobby messages are limited to 800 bytes because the lobby is one UDP packet per message (about 260 CJK characters or 800 ASCII characters). The header shows a byte counter as you approach the limit, and an over-limit message is refused with the draft kept. Private rooms have no message limit.
+Lobby messages are limited to 800 bytes because the lobby is one UDP packet per message (about 260 CJK characters or 800 ASCII characters). The header shows a byte counter as you approach the limit, and an over-limit message is refused with the draft kept. Private rooms have no byte or line limit.
 
 ## Shortcuts
 
@@ -113,7 +113,7 @@ Lobby (all peers)
 
 ## Troubleshooting
 
-If your input method's composition preview appears at the bottom-left corner instead of inside the input box, try `LOCAL_CHAT_IME_CURSOR=1 npx local-chat` (experimental; relative cursor sync).
+If your input method's composition preview appears at the bottom-left corner instead of inside the input box, try `LOCAL_CHAT_IME_CURSOR=1 npx local-chat` (experimental; relative cursor sync). Known limitation: while the flag is on, console output or Node warnings printed during a session can misplace the caret until the next redraw.
 
 ## Requirements
 

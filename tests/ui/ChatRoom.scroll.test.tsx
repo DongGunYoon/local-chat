@@ -149,4 +149,20 @@ describe("ChatRoom row scrolling", () => {
     expect(room.sendChatMessage).toHaveBeenCalledWith("hi");
     expect(room.frame()).not.toContain("lines below");
   });
+
+  it("snaps to the newest rows when a local notice is posted while scrolled up", async () => {
+    const room = await renderRoom();
+
+    await room.type(SHIFT_UP);
+    await room.type(SHIFT_UP);
+    expect(room.frame()).toContain("▼ 2 lines below");
+
+    await room.type("a".repeat(900));
+    await room.type("\r");
+
+    expect(room.sendChatMessage).not.toHaveBeenCalled();
+    expect(room.frame()).toContain("Too long for the lobby");
+    expect(room.frame()).not.toContain("lines below");
+    expect(room.frame()).toContain("❯ aaa");
+  });
 });

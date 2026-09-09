@@ -129,6 +129,8 @@ describe("RoomDiscovery", () => {
     await sendFromLoopback({ ...base, name: "bad-port-float", port: 42.5 });
     await sendFromLoopback({ ...base, name: "bad-password", hasPassword: "no" });
     await sendFromLoopback({ ...base, name: "bad-count", userCount: "1" });
+    await sendFromLoopback({ ...base, name: "bad-count-negative", userCount: -1 });
+    await sendFromLoopback({ ...base, name: "bad-count-float", userCount: 1.5 });
     await sendFromLoopback({ ...base, name: "\x1b[2J" });
     await sendFromLoopback({ ...base, type: "something-else", name: "wrong-type" });
 

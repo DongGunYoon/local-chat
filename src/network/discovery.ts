@@ -83,7 +83,8 @@ function parseRoomAnnounce(raw: unknown): RoomAnnounce | null {
 
   if (msg.type !== "room-announce") return null;
   if (typeof msg.hasPassword !== "boolean") return null;
-  if (typeof msg.userCount !== "number") return null;
+  if (typeof msg.userCount !== "number" || !Number.isInteger(msg.userCount)) return null;
+  if (msg.userCount < 0) return null;
   if (typeof msg.port !== "number" || !Number.isInteger(msg.port)) return null;
   if (msg.port < 1 || msg.port > 65535) return null;
 

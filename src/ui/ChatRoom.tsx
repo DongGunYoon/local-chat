@@ -169,6 +169,18 @@ export function ChatRoom({
     [],
   );
 
+  /**
+   * Post a locally triggered notice. Unlike an incoming message it always snaps the view to
+   * the bottom, so an answer to something the user just did can never land below the viewport.
+   */
+  const notify = useCallback(
+    (content: string) => {
+      addMessage("system", content);
+      setScrollOffset(0);
+    },
+    [addMessage],
+  );
+
   // --- Lobby mode event handling ---
   useEffect(() => {
     if (!isLobby || !lobbyPeer) return;
@@ -383,14 +395,13 @@ export function ChatRoom({
     if (isLobby && lobbyPeer) {
       const measure = measureLobby(text);
       if (measure.level === "over") {
-        addMessage(
-          "system",
+        notify(
           `Too long for the lobby (${measure.bytes}/${LOBBY_MAX_MESSAGE_BYTES} B) \u2014 open a private room (Esc\u00D72) for long messages`,
         );
         return false;
       }
       if (!lobbyPeer.sendChatMessage(text)) {
-        addMessage("system", "Not delivered \u2014 the lobby is offline");
+        notify("Not delivered \u2014 the lobby is offline");
         return false;
       }
       addMessage("message", text, safeNickname(lobbyPeer.getNickname()), true);
@@ -408,7 +419,7 @@ export function ChatRoom({
     }
     if (mode === "client" && client) {
       if (!client.sendMessage(encrypted)) {
-        addMessage("system", "Not delivered \u2014 reconnecting\u2026");
+        notify("Not delivered \u2014 reconnecting\u2026");
         return false;
       }
       return true;
@@ -435,7 +446,7 @@ export function ChatRoom({
         return true;
 
       case "/users":
-        addMessage("system", `Online (${users.length}): ${users.join(", ")}`);
+        notify(`Online (${users.length}): ${users.join(", ")}`);
         return true;
 
       case "/erase":
@@ -448,7 +459,7 @@ export function ChatRoom({
         return true;
 
       case "/version":
-        addMessage("system", `local-chat v${VERSION}`);
+        notify(`local-chat v${VERSION}`);
         return true;
 
       case "/copy": {
@@ -456,11 +467,11 @@ export function ChatRoom({
         const chatMessages = messages.filter((m) => m.type === "message");
         const target = chatMessages[chatMessages.length - n];
         if (!target) {
-          addMessage("system", "No message to copy");
+          notify("No message to copy");
         } else if (copyToClipboard(target.content)) {
-          addMessage("system", "Copied to clipboard");
+          notify("Copied to clipboard");
         } else {
-          addMessage("system", "Clipboard not available");
+          notify("Clipboard not available");
         }
         return true;
       }
@@ -470,10 +481,7 @@ export function ChatRoom({
         return true;
 
       default:
-        addMessage(
-          "system",
-          `Unknown command: ${command}. Type /help, or start with // to send it as text`,
-        );
+        notify(`Unknown command: ${command}. Type /help, or start with // to send it as text`);
         return false;
     }
   };
@@ -496,7 +504,7 @@ export function ChatRoom({
     maxVisibleRows: maxInputRows,
     focus: !overlayActive,
     onSubmit: handleSubmit,
-    onNotice: (message) => addMessage("system", message),
+    onNotice: notify,
   });
 
   // Experimental IME caret sync: a no-op unless LOCAL_CHAT_IME_CURSOR=1 installed the proxy.
@@ -531,6 +539,14 @@ export function ChatRoom({
   const maxScroll = rowsAll.length > messageAreaHeight ? rowsAll.length - messageAreaHeight + 1 : 0;
   const effectiveOffset = Math.min(scrollOffset, maxScroll);
   const pageRows = Math.max(1, messageAreaHeight - 1);
+
+  // Keep the stored offset inside the clamp: a stale larger value would resurface through
+  // addMessage's `prev + added` and push a reader who is pinned to the bottom back up.
+  // Boss mode is skipped because its full-height viewport only borrows the screen.
+  useEffect(() => {
+    if (showFake) return;
+    setScrollOffset((prev) => Math.min(prev, maxScroll));
+  }, [showFake, maxScroll]);
 
   // 키보드 입력: 이 화면의 유일한 useInput
   useInput((inputStr, key) => {
