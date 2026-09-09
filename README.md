@@ -21,7 +21,7 @@ Enter a nickname and you're in the lobby — a global LAN chatroom where everyon
 - **Volatile** — Messages exist in memory only. Leave the room, they're gone.
 - **Encrypted** — Private rooms use AES-256-GCM. The lobby is obfuscated only, not encrypted.
 - **Boss mode** — Instant fake system monitor overlay. Press `Tab` to hide everything.
-- **IME friendly** — Korean, Japanese and Chinese input methods work; wide characters and emoji are measured correctly.
+- **IME friendly** — Korean, Japanese and Chinese input methods work, with the composition preview inside the input box; wide characters and emoji are measured correctly.
 - **Update check** — Notifies you on startup if a newer version is available.
 
 ## Flow
@@ -113,7 +113,7 @@ Lobby (all peers)
 
 ## Troubleshooting
 
-If your input method's composition preview appears at the bottom-left corner instead of inside the input box, try `LOCAL_CHAT_IME_CURSOR=1 npx local-chat` (experimental; relative cursor sync). Known limitation: while the flag is on, console output or Node warnings printed during a session can misplace the caret until the next redraw.
+local-chat keeps the terminal cursor on the input caret so that an input method's composition preview appears inside the input box. If the cursor ends up in the wrong place in your terminal, turn this off with `npx local-chat --no-ime-cursor` or `LOCAL_CHAT_IME_CURSOR=0`. Known limitation: console output or Node warnings printed during a session can misplace the caret until the next redraw.
 
 ## Requirements
 

@@ -507,7 +507,8 @@ export function ChatRoom({
     onNotice: notify,
   });
 
-  // Experimental IME caret sync: a no-op unless LOCAL_CHAT_IME_CURSOR=1 installed the proxy.
+  // IME caret sync: a no-op when the entry point did not install the proxy (--no-ime-cursor,
+  // LOCAL_CHAT_IME_CURSOR=0, or stdout is not a terminal).
   // The frame is rows - 1 lines tall and the InputBar's bottom border is its last line, so the
   // caret sits visibleCount - caretVisible.row lines above that border, and Ink parks the real
   // cursor one line below the frame. Runs on every render because any of those can move.

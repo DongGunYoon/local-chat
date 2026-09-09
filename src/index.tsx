@@ -2,7 +2,7 @@
 
 import { render } from "ink";
 import meow from "meow";
-import { installCursorSync } from "./terminal/imeCursor.js";
+import { installCursorSync, shouldSyncImeCursor } from "./terminal/imeCursor.js";
 import { App } from "./ui/App.js";
 
 meow(
@@ -12,6 +12,7 @@ meow(
 
   Options
     --no-update-check  Skip the npm version check on startup
+    --no-ime-cursor    Leave the terminal cursor where Ink parks it (turns off IME caret sync)
 `,
   {
     importMeta: import.meta,
@@ -46,9 +47,10 @@ process.on("SIGTERM", () => {
   process.exit(0);
 });
 
-// Experimental, opt-in: wrap stdout so the terminal cursor follows the caret, which is
-// where an IME draws its composition preview. Unset, Ink writes to process.stdout as before.
-const stdout = process.env.LOCAL_CHAT_IME_CURSOR === "1" ? installCursorSync() : undefined;
+// Wrap stdout so the terminal cursor follows the caret, which is where an input method draws
+// its composition preview. Off with --no-ime-cursor, LOCAL_CHAT_IME_CURSOR=0, or a non-TTY
+// stdout; then Ink writes to process.stdout as before.
+const stdout = shouldSyncImeCursor() ? installCursorSync() : undefined;
 
 // Ink 앱 렌더링
 // Ctrl+C is handled by each screen: Ink's own handler would exit on a \x03 byte that

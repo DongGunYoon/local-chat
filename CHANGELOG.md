@@ -16,7 +16,7 @@
 - Terminal control sequences in pasted or received text are stripped; tabs expand to spaces
 - `/copy` works on Windows (`clip`) and Wayland (`wl-copy`)
 - Private rooms: a message sent while reconnecting now shows "Not delivered" instead of vanishing
-- Experimental `LOCAL_CHAT_IME_CURSOR=1` keeps the terminal cursor on the caret, so an input method's composition preview appears inside the input box instead of the bottom-left corner
+- The terminal cursor now follows the input caret, so an input method's composition preview appears inside the input box instead of the bottom-left corner (turn off with `--no-ime-cursor` or `LOCAL_CHAT_IME_CURSOR=0`)
 
 ## 0.1.2
 
