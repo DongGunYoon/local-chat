@@ -13,6 +13,7 @@ PROMOTION.md
 demo.tape
 *.cast
 *.gif
+!assets/*.gif
 logo-preview.js
 sniff-lobby.js
 .superpowers/
