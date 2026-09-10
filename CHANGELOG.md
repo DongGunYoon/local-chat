@@ -1,11 +1,11 @@
 # Changelog
 
-## 0.2.1
+## 1.0.0
 
-- Fix: the published `dist/index.js` lost its executable bit in 0.2.0, so `npx local-chat` failed with "command not found"; the build now sets it and CI checks it
+First stable release. 0.2.0 was published but cannot be started with `npx` (its `dist/index.js` was not executable) and is deprecated; everything below is relative to 0.1.2.
 
-## 0.2.0
-
+- Fix: the build now marks `dist/index.js` executable and CI checks it, so `npx local-chat` works
+- The startup update check compares version numbers instead of strings, so a build ahead of the registry no longer announces an "update"
 - Reject malformed WebSocket/UDP packets instead of crashing every participant (non-string nickname/content, oversized frames)
 - Socket errors no longer crash the process when the UDP ports are busy
 - Room discovery now uses the announcer's real source address, fixing joins on VPN/multi-adapter hosts
