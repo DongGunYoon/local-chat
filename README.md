@@ -1,6 +1,6 @@
 <h1 align="center">local-chat</h1>
 
-<p align="center"><strong>Terminal chat for everyone on the same WiFi. One command, no accounts, no server.</strong></p>
+<p align="center"><strong>Terminal chat for everyone on the same WiFi. One command, no accounts, nothing to host.</strong></p>
 
 <p align="center">
   <a href="https://www.npmjs.com/package/local-chat"><img src="https://img.shields.io/npm/v/local-chat.svg" alt="npm version"></a>
@@ -18,7 +18,9 @@ npx local-chat
 
 That is it.
 
-Type a nickname and you are in the **lobby**, a chat room shared by everyone running local-chat on the network. Press `Esc` twice to browse **private rooms**, and create or join one. Nothing is installed globally, nothing is written to disk, and messages live in memory only: close the terminal and they are gone.
+You need [Node.js](https://nodejs.org) 18 or newer (`node -v` to check). Works on macOS, Linux and Windows. The first run asks `Ok to proceed? (y)`: that is npx fetching the package, press Enter. Chatting often? `npm i -g local-chat` gives you a permanent `local-chat` command.
+
+Type a nickname and you are in the **lobby**, a chat room shared by everyone running local-chat on the network. You will be alone until someone else on your WiFi runs it too. Press `Esc` twice to browse **private rooms**, and create or join one. Nothing is installed globally, no message is ever written to disk, and the conversation lives in memory only: close the terminal and it is gone.
 
 ## Good for
 
@@ -149,6 +151,7 @@ The nickname and room-creation prompts are not covered yet: a composition previe
 - **`Shift+Enter` sends instead of inserting a line.** Your terminal cannot tell it apart from Enter. macOS Terminal.app never can; iTerm2, Ghostty, kitty, WezTerm, VS Code 1.110+ and Windows Terminal Preview can. Use `Option+Enter` with "Use Option as Meta key" turned on, or `Ctrl+J`.
 - **Keys behave strangely after startup.** A terminal may mishandle the keyboard-protocol requests; start with `--no-key-protocol` or `LOCAL_CHAT_KEY_PROTOCOL=0`.
 - **No rooms in the browser, or nobody in the lobby.** Both rely on UDP broadcast (ports 41568 and 41569), so everyone must be on the same network segment. Guest WiFi that isolates clients blocks the broadcast, and so does a firewall that drops those ports.
+- **An old version starts.** `npx` reuses its cache; run `npx local-chat@latest` to fetch the newest release.
 
 ## Requirements
 

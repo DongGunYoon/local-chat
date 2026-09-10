@@ -1,7 +1,7 @@
 {
   "name": "local-chat",
   "version": "1.0.0",
-  "description": "Private local network CLI chat - no server, no logs, just vibes",
+  "description": "Terminal chat for everyone on the same WiFi. One command, no accounts, no server.",
   "type": "module",
   "main": "dist/index.js",
   "exports": {
@@ -28,11 +28,17 @@
   "keywords": [
     "chat",
     "cli",
-    "local",
     "terminal",
+    "tui",
     "lan",
+    "wifi",
+    "local-network",
+    "p2p",
     "websocket",
-    "private"
+    "encrypted",
+    "ink",
+    "npx",
+    "boss-mode"
   ],
   "author": "DongGunYoon",
   "license": "MIT",
