@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.0
 
 - Reject malformed WebSocket/UDP packets instead of crashing every participant (non-string nickname/content, oversized frames)
 - Socket errors no longer crash the process when the UDP ports are busy
