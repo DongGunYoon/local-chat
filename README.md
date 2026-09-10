@@ -24,7 +24,7 @@ Type a nickname and you are in the **lobby**, a chat room shared by everyone run
 
 ## Good for
 
-- A dorm floor or a campus lab
+- A shared flat, or a study group on someone's hotspot
 - The table you are sitting at during a hackathon
 - An office or a coworking space
 - A classroom or a workshop: the host opens a room, everyone joins from the terminal they already have open
@@ -150,7 +150,7 @@ The nickname and room-creation prompts are not covered yet: a composition previe
 - **The cursor lands in the wrong place.** Turn the cursor sync off with `npx local-chat --no-ime-cursor` or `LOCAL_CHAT_IME_CURSOR=0`. Known limitation: console output or Node warnings printed during a session can misplace the caret until the next redraw.
 - **`Shift+Enter` sends instead of inserting a line.** Your terminal cannot tell it apart from Enter. macOS Terminal.app never can; iTerm2, Ghostty, kitty, WezTerm, VS Code 1.110+ and Windows Terminal Preview can. Use `Option+Enter` with "Use Option as Meta key" turned on, or `Ctrl+J`.
 - **Keys behave strangely after startup.** A terminal may mishandle the keyboard-protocol requests; start with `--no-key-protocol` or `LOCAL_CHAT_KEY_PROTOCOL=0`.
-- **No rooms in the browser, or nobody in the lobby.** Both rely on UDP broadcast (ports 41568 and 41569), so everyone must be on the same network segment. Guest WiFi that isolates clients blocks the broadcast, and so does a firewall that drops those ports.
+- **No rooms in the browser, or nobody in the lobby.** Both rely on UDP broadcast (ports 41568 and 41569), so everyone must be on the same network segment. Networks that isolate devices from each other block the broadcast: most guest, campus and hotel WiFi, and some office networks. A home router, a hackathon LAN or a phone hotspot works. A firewall that drops those ports blocks it too.
 - **An old version starts.** `npx` reuses its cache; run `npx local-chat@latest` to fetch the newest release.
 
 ## Requirements
