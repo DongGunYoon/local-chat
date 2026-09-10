@@ -155,6 +155,10 @@ The nickname and room-creation prompts are not covered yet: a composition previe
 - Node.js >= 18
 - Same WiFi / LAN network
 
+## Support
+
+If local-chat saved you an evening, you can [buy me a coffee](https://buymeacoffee.com/donggun9613). Bug reports and ideas in the [issues](https://github.com/DongGunYoon/local-chat/issues) are just as welcome.
+
 ## License
 
 MIT. Source at [github.com/DongGunYoon/local-chat](https://github.com/DongGunYoon/local-chat).
