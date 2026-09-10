@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { isNewerVersion } from "../utils/version.js";
 import { VERSION } from "../version.js";
 
 type VersionCheckResult = {
@@ -44,7 +45,7 @@ export function useVersionCheck(): VersionCheckResult {
   }, []);
 
   return {
-    updateAvailable: latestVersion !== null && latestVersion !== VERSION,
+    updateAvailable: latestVersion !== null && isNewerVersion(latestVersion, VERSION),
     latestVersion,
     currentVersion: VERSION,
   };
