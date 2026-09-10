@@ -1,6 +1,6 @@
 {
   "name": "local-chat",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Private local network CLI chat - no server, no logs, just vibes",
   "type": "module",
   "main": "dist/index.js",
@@ -22,7 +22,8 @@
     "lint": "biome check src tests",
     "lint:fix": "biome check --write src tests",
     "prepublishOnly": "npm run build",
-    "prebuild": "rm -rf dist"
+    "prebuild": "rm -rf dist",
+    "postbuild": "chmod +x dist/index.js"
   },
   "keywords": [
     "chat",

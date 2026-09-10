@@ -30,6 +30,8 @@ jobs:
 
       - name: Build
         run: npm run build
+      - name: Check the CLI entry point is executable
+        run: test -x dist/index.js
 
       - name: Test
         run: npm test

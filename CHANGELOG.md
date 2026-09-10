@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.1
+
+- Fix: the published `dist/index.js` lost its executable bit in 0.2.0, so `npx local-chat` failed with "command not found"; the build now sets it and CI checks it
+
 ## 0.2.0
 
 - Reject malformed WebSocket/UDP packets instead of crashing every participant (non-string nickname/content, oversized frames)
